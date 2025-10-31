@@ -1,0 +1,82 @@
+# Maven
+# Build your Java project and run tests with Apache Maven.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/java
+
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+strategy:
+  matrix:
+    user-service:
+      servicePath: 'microservices/user-service'
+    order-service:
+      servicePath: 'microservices/order-service'
+    inventory-service:
+      servicePath: 'microservices/inventory-service'
+    product-service:
+      servicePath: 'microservices/product-service'
+
+steps:
+- checkout: self
+
+# --- SonarCloud: Prepare Analysis ---
+- task: SonarCloudPrepare@3
+  displayName: 'Prepare SonarCloud Analysis'
+  inputs:
+    SonarCloud: 'sonar-connection-carlosdev'
+    organization: 'carlos0320-dev'
+    scannerMode: 'Other'
+    projectKey: '$(servicePath)'
+    projectName: '$(servicePath)'
+    extraProperties: |
+      sonar.projectBaseDir=$(servicePath)
+      sonar.sources=$(servicePath)/src
+      sonar.java.binaries=$(servicePath)/target/classes
+
+# --- Build & Test with Maven ---
+- task: Maven@3
+  displayName: 'Build and Test with Maven'
+  inputs:
+    mavenPomFile: '$(servicePath)/pom.xml'
+    goals: 'clean verify sonar:sonar'
+    mavenOptions: '-Xmx3072m'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.17'
+    jdkArchitectureOption: 'x64'
+    publishJUnitResults: true
+    testResultsFiles: '$(servicePath)/**/surefire-reports/TEST-*.xml'
+    sqMavenPluginVersionChoice: 'latest'
+
+# --- Publish SonarCloud Results ---
+- task: SonarCloudPublish@3
+  displayName: 'Publish SonarCloud Results'
+  inputs:
+    pollingTimeoutSec: '300'
+
+# --- Copy & Compress JAR ---
+- task: CopyFiles@2
+  displayName: 'Copy JAR'
+  inputs:
+    SourceFolder: '$(servicePath)/target'
+    Contents: '*.jar'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)/$(servicePath)'
+
+- task: ArchiveFiles@2
+  displayName: 'Compress JAR'
+  inputs:
+    rootFolderOrFile: '$(Build.ArtifactStagingDirectory)/$(servicePath)'
+    includeRootFolder: false
+    archiveType: 'zip'
+    archiveFile: '$(Build.ArtifactStagingDirectory)/$(servicePath).zip'
+    replaceExistingArchive: true
+
+# --- Publish Artifacts ---
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Build Artifacts'
+  inputs:
+    pathToPublish: '$(Build.ArtifactStagingDirectory)/$(servicePath).zip'
+    artifactName: '$(servicePath)'
