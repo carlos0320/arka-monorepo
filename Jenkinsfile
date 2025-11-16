@@ -30,6 +30,21 @@ pipeline {
             }
         }
 
+
+        stage('SonarQube Analysis') {
+            steps {
+                echo 'Ejecutando análisis de SonarQube...'
+                // Usa la configuración "sonarqube-local" que creamos en Manage Jenkins → System
+                withSonarQubeEnv('sonarqube-local') {
+                    sh '''
+                      mvn sonar:sonar \
+                        -DskipTests=true \
+                        -Dsonar.projectKey=arka-monorepo
+                    '''
+                }
+            }
+        }
+
         stage('Docker sanity check') {
             steps {
                 echo 'Verificando que Jenkins puede usar Docker...'
