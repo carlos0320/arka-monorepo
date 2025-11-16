@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+      </profile>
+      <profile name="Annotation profile for arka" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.40/lombok-1.18.40.jar" />
+        </processorPath>
+        <module name="api-gateway" />
+        <module name="cart-mcsv" />
+        <module name="inventory-mcsv" />
+        <module name="notification-mcsv" />
+        <module name="order-mcsv" />
+        <module name="user-mcsv" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="config-server" target="17" />
+      <module name="eureka" target="17" />
+      <module name="gateway" target="17" />
+      <module name="product-mcsv" target="1.8" />
+      <module name="product-microservice" target="1.8" />
+      <module name="shopping-cart-mcsv" target="1.8" />
+    </bytecodeTargetLevel>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="api-gateway" options="-parameters" />
+      <module name="cart-mcsv" options="-parameters" />
+      <module name="config-server" options="-parameters" />
+      <module name="eureka" options="-parameters" />
+      <module name="gateway" options="-parameters" />
+      <module name="inventory-mcsv" options="-parameters" />
+      <module name="notification-mcsv" options="-parameters" />
+      <module name="order-mcsv" options="-parameters" />
+      <module name="product-microservice" options="" />
+      <module name="shopping-cart-mcsv" options="" />
+      <module name="user-mcsv" options="-parameters" />
+    </option>
+  </component>
+</project>

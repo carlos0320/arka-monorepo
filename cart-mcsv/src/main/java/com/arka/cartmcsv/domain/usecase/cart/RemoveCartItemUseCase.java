@@ -1,0 +1,41 @@
+package com.arka.cartmcsv.domain.usecase.cart;
+
+import com.arka.cartmcsv.domain.model.Cart;
+import com.arka.cartmcsv.domain.model.CartItem;
+import com.arka.cartmcsv.domain.model.CartStatus;
+import com.arka.cartmcsv.domain.model.gateway.CartGateway;
+import com.arka.cartmcsv.domain.usecase.inventory.ReleaseStockUseCase;
+
+public class RemoveCartItemUseCase {
+  private final CartGateway cartGateway;
+  private final ReleaseStockUseCase releaseStockUseCase;
+
+
+  public RemoveCartItemUseCase(CartGateway cartGateway, ReleaseStockUseCase releaseStockUseCase) {
+    this.cartGateway = cartGateway;
+    this.releaseStockUseCase = releaseStockUseCase;
+  }
+
+  public void execute(Long userId, Long cartItemId){
+    validateInputs(userId,cartItemId);
+    Cart cart = cartGateway.findCartByUserIdAndStatus(userId, CartStatus.PENDING)
+            .orElseThrow(() -> new IllegalArgumentException("Pending cart not found"));
+
+    CartItem cartItem = cart.findCartItemById(cartItemId);
+
+    releaseStockUseCase.execute(cartItem.getProductId(), cartItem.getQuantity());
+
+    cart.removeCartItem(cartItemId);
+
+    cartGateway.save(cart);
+  }
+
+  private void validateInputs(Long userId,  Long cartItemId) {
+
+    if (userId == null || userId <= 0)
+      throw new IllegalArgumentException("Invalid user id");
+
+    if (cartItemId == null || cartItemId <= 0)
+      throw new IllegalArgumentException("Invalid cart item id");
+  }
+}

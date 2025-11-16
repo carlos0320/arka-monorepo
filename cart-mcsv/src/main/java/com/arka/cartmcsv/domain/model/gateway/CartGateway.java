@@ -1,14 +1,16 @@
 package com.arka.cartmcsv.domain.model.gateway;
 
-import com.arka.cartmcsv.domain.model.CartItem;
-import com.arka.cartmcsv.domain.model.CartStatus;
 import com.arka.cartmcsv.domain.model.Cart;
-import org.springframework.context.annotation.Bean;
-import org.springframework.stereotype.Component;
+import com.arka.cartmcsv.domain.model.CartStatus;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface CartGateway {
   Cart save(Cart cart);
-  Optional<Cart> findByUserIdAndStatus(Long userId, CartStatus status);
+  void updateCart(Cart cart);
+  Optional<Cart> findCartByUserIdAndStatus(Long userId, CartStatus status);
+  void removeCart(Long cartId);
+  List<Cart> getAbandonedCarts();
+
 }

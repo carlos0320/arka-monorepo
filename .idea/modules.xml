@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/arka.iml" filepath="$PROJECT_DIR$/.idea/arka.iml" />
+      <module fileurl="file://$PROJECT_DIR$/product-mcsv/product-mcsv.iml" filepath="$PROJECT_DIR$/product-mcsv/product-mcsv.iml" />
     </modules>
   </component>
 </project>

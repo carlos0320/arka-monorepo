@@ -1,16 +1,15 @@
-
 spring:
   application:
     name: cart-mcsv
 
-  datasource:
-    url: jdbc:postgresql://localhost:5432/arka_db
-    username: username
-    password: passowrd
-    driver-class-name: org.postgresql.Driver
-  h2:
-    console:
-      enabled: true
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE}
+
+  config:
+    import:
+      - ${SECRET_APP_DEV_PATH}
+      - ${SECRET_CART_SERVICE_DEV_PATH}
+
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
 
@@ -21,7 +20,24 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
+user:
+  service:
+    url: ${USER_SERVICE_URI:http://localhost:8081}
+
+inventory:
+  service:
+    url: ${INVENTORY_SERVICE_URI:http://localhost:8082}
+
 server:
-  port: 8086
+  port: ${CART_SERVICE_PORT}
 
-
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: when_authorized
