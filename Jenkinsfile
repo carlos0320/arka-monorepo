@@ -19,7 +19,6 @@ pipeline {
         stage('Build (sin tests)') {
             steps {
                 echo 'Compilando y empaquetando monorepo Arka (sin tests)...'
-                // Compila y empaqueta todos los microservicios, sin correr tests
                 sh 'mvn clean package -DskipTests=true'
             }
         }
@@ -27,8 +26,15 @@ pipeline {
         stage('Tests (por ahora deshabilitados)') {
             steps {
                 echo 'Tests deshabilitados temporalmente en CI (SECRET_APP_DEV_PATH requerido).'
-                // Dejamos el stage preparado, pero saltamos la ejecución de tests
                 sh 'mvn test -DskipTests=true'
+            }
+        }
+
+        stage('Docker sanity check') {
+            steps {
+                echo 'Verificando que Jenkins puede usar Docker...'
+                sh 'docker version'
+                sh 'docker ps'
             }
         }
     }
