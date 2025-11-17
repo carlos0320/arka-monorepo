@@ -12,6 +12,7 @@ public class ReserveStockUseCase {
   }
 
   public Product execute(Long productId, Integer quantity){
+    ValidateParameters(productId, quantity);
     try{
       return inventoryGateway.reserveStock(productId, quantity);
     }catch (Exception ex){

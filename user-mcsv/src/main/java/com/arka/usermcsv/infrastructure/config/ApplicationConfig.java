@@ -40,8 +40,8 @@ public class ApplicationConfig {
   }
 
   @Bean
-  public CreateUserUseCase createUserUseCase(UserGateway userGateway, RoleGateway roleGateway, ClientGateway clientGateway, SupplierGateway supplierGateway) {
-    return new CreateUserUseCase(userGateway, roleGateway, clientGateway, supplierGateway);
+  public CreateUserUseCase createUserUseCase(UserGateway userGateway, RoleGateway roleGateway) {
+    return new CreateUserUseCase(userGateway, roleGateway);
   }
 
   @Bean

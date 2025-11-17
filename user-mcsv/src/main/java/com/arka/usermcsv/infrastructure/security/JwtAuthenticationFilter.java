@@ -17,23 +17,31 @@ import java.io.IOException;
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+  // intercepta todas las peticiones antes de llegar al controller
   private final JwtService jwtService;
   private final JpaUserDetailService userDetailsService;
 
   @Override
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+
+    // revisamos los headers
     final String authorizationHeader = request.getHeader("Authorization");
 
     if(authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")){
+      // si vamos a registrar un usuario o rutas publicas
       filterChain.doFilter(request, response);
       return;
     }
 
+    // extraemos el jwt
     final String jwt = authorizationHeader.substring(7);
+
+    // extraemos el usuario
     final String username = jwtService.extractUserName(jwt);
 
+    // autenticamos el usuario en el contexto de spring
     if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-      UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+      UserDetails userDetails = userDetailsService.loadUserByUsername(username); //Carga al usuario desde BD
       if (jwtService.isTokenValid(jwt,userDetails.getUsername())) {
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
@@ -41,7 +49,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         null,
                         userDetails.getAuthorities()
                 );
-        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+        // Crea una Authentication en Spring Security
+        //Spring, esta request pertenece a este usuario y tiene estos roles”
+        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request)); // informacion util para auditoria, logs, ips
         SecurityContextHolder.getContext().setAuthentication(authentication);
       }
     }

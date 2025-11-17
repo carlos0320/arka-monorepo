@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class JpaUserDetailService implements UserDetailsService {
+  // adaptador entre (userRepository) (bd) y spring Security
   private final UserRepository userRepository;
 
   @Override

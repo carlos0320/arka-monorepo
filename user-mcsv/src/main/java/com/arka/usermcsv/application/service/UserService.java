@@ -2,14 +2,16 @@ package com.arka.usermcsv.application.service;
 
 import com.arka.usermcsv.application.dto.UserRequestDto;
 import com.arka.usermcsv.application.dto.UserResponseDto;
+import com.arka.usermcsv.application.exception.ValidationException;
 import com.arka.usermcsv.application.mapper.ClientMapper;
 import com.arka.usermcsv.application.mapper.SupplierMapper;
 import com.arka.usermcsv.application.mapper.UserMapper;
+import com.arka.usermcsv.domain.exception.InvalidRefreshTokenException;
+import com.arka.usermcsv.domain.exception.UserNotFoundException;
 import com.arka.usermcsv.domain.model.*;
 import com.arka.usermcsv.domain.model.gateway.RefreshTokenGateway;
 import com.arka.usermcsv.domain.model.gateway.UserGateway;
 import com.arka.usermcsv.domain.usecase.CreateUserUseCase;
-import jakarta.transaction.Transactional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -32,7 +34,6 @@ public class UserService {
 
   public UserResponseDto register(UserRequestDto request) {
     String hashed = passwordEncoder.encode(request.getPassword());
-
     User user = UserMapper.toDomain(request, hashed);
     Client client = ClientMapper.toDomain(request.getClient());
     Supplier supplier = SupplierMapper.toDomain(request.getSupplier());
@@ -40,23 +41,37 @@ public class UserService {
             .map(r -> RoleTypes.valueOf(r.toUpperCase()))
             .collect(Collectors.toSet());
 
+    if (roles.contains(RoleTypes.CLIENT) && client == null) {
+      throw new ValidationException("You must provide client data for the role client");
+    }
+
+    if (client != null && !roles.contains(RoleTypes.CLIENT)){
+      throw new ValidationException("You must set the role client for the client information");
+    }
+
     User savedUser = createUserUseCase.execute(user, roles, client, supplier);
     return UserMapper.toDto(savedUser);
   }
 
   public UserResponseDto getDetails(Long id){
+    if (id == null) {
+      throw new ValidationException("User ID must not be null");
+    }
     User userSaved = userGateway.findById(id)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+            .orElseThrow(() -> new UserNotFoundException());
     return UserMapper.toDto(userSaved);
   }
 
   public User findByRefreshToken(String refreshToken) {
+    if (refreshToken == null || refreshToken.isBlank()) {
+      throw new ValidationException("Refresh token must not be null and must be valid");
+    }
     RefreshToken tokenStored = refreshTokenGateway.findByToken(refreshToken)
-            .orElseThrow(() -> new RuntimeException("Refresh token not found"));
+            .orElseThrow(() -> new InvalidRefreshTokenException());
 
     Long userId = tokenStored.getUserId();
     return userGateway.findById(userId)
-            .orElseThrow(() -> new RuntimeException("User not found"));
+            .orElseThrow(() -> new UserNotFoundException());
 
   }
 }

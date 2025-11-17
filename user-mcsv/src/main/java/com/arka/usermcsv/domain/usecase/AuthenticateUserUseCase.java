@@ -1,5 +1,6 @@
 package com.arka.usermcsv.domain.usecase;
 
+import com.arka.usermcsv.domain.exception.InvalidCredentialsException;
 import com.arka.usermcsv.domain.model.AuthenticationResult;
 import com.arka.usermcsv.domain.model.User;
 import com.arka.usermcsv.domain.model.gateway.UserGateway;
@@ -20,17 +21,21 @@ public class AuthenticateUserUseCase {
   }
 
   public AuthenticationResult execute(String email, String rawPassword) {
-    Optional<User> userOpt = userGateway.findByEmail(email);
-    if (userOpt.isEmpty()) {
-      throw new IllegalArgumentException("Invalid credentials");
+
+    if (email == null || rawPassword == null) {
+      throw new InvalidCredentialsException();
     }
 
-    User user = userOpt.get();
+    Optional<User> userStored = userGateway.findByEmail(email);
+    if (userStored.isEmpty()) {
+      throw new InvalidCredentialsException();
+    }
+
+    User user = userStored.get();
     if (!encoder.matches(rawPassword, user.getPassword())) {
-      throw new IllegalArgumentException("Invalid credentials");
+      throw new InvalidCredentialsException();
     }
 
-    // Domain just validates and returns a signal — tokens are built in app layer
     return new AuthenticationResult(user);
   }
 }

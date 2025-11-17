@@ -16,10 +16,14 @@ import java.util.Map;
 
 @Service
 public class JwtService {
-
   private final SecretKey secretKey;
   private final Long accessExpiration;
   private final Long refreshExpiration;
+
+  // crea el jwt
+  // firmamos el jwt
+  // valida jwt
+  // leemos los claims
 
   public JwtService(@Value("${jwt.secret-key}") String secretKey,
                     @Value("${jwt.access-expiration}") Long accessExpiration,

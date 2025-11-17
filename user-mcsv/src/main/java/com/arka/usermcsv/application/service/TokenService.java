@@ -1,5 +1,6 @@
 package com.arka.usermcsv.application.service;
 
+import com.arka.usermcsv.application.exception.ValidationException;
 import com.arka.usermcsv.domain.model.User;
 import com.arka.usermcsv.infrastructure.security.JwtService;
 import org.springframework.stereotype.Component;
@@ -18,6 +19,9 @@ public class TokenService {
   }
 
   public String generateAccessToken(User user) {
+    if (user == null){
+      throw new ValidationException("User must not be null");
+    }
     Map<String, Object> claims = new HashMap<>();
     claims.put("userId", user.getUserId());
     claims.put("roles", user.getRoles() != null
@@ -31,6 +35,9 @@ public class TokenService {
   }
 
   public String generateRefreshToken(User user) {
+    if (user == null){
+      throw new ValidationException("User must not be null");
+    }
     Map<String, Object> claims = new HashMap<>();
     claims.put("userId", user.getUserId());
     return jwtService.generateRefreshToken(claims, user.getEmail());

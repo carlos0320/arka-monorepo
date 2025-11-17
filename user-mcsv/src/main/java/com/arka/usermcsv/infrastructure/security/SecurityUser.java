@@ -11,7 +11,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SecurityUser implements UserDetails {
-
+  // puente o traduce la entidad usuario con un usuario que spring security puede entender
+  // UserEntity-> SecurityUser -> Spring Security
   private final UserEntity user;
 
   public SecurityUser(UserEntity user) {

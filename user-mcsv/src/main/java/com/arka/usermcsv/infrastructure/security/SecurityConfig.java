@@ -33,7 +33,7 @@ public class SecurityConfig {
             )
             .userDetailsService(userDetailsService)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class) // Antes de que Spring intente autenticar nada, ejecuta primero mi filtro JWT.
             .headers(headers -> headers.frameOptions().sameOrigin())
             .httpBasic(Customizer.withDefaults());
 

@@ -1,5 +1,7 @@
 package com.arka.usermcsv.domain.usecase;
 
+import com.arka.usermcsv.domain.exception.InvalidRefreshTokenException;
+import com.arka.usermcsv.domain.exception.RefreshTokenExpiredException;
 import com.arka.usermcsv.domain.model.RefreshToken;
 import com.arka.usermcsv.domain.model.gateway.RefreshTokenGateway;
 
@@ -15,10 +17,10 @@ public class RefreshTokenUseCase {
 
   public RefreshToken validate(String token) {
     RefreshToken stored = refreshTokenGateway.findByToken(token)
-            .orElseThrow(() -> new IllegalArgumentException("Invalid refresh token"));
+            .orElseThrow(() -> new InvalidRefreshTokenException());
 
     if (stored.isExpired() || stored.getExpiredAt().isBefore(Instant.now())) {
-      throw new IllegalArgumentException("Refresh token expired");
+      throw new RefreshTokenExpiredException();
     }
 
     return stored;

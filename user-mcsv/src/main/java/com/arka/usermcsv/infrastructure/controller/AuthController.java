@@ -5,6 +5,7 @@ import com.arka.usermcsv.application.service.AuthService;
 import com.arka.usermcsv.application.service.TokenService;
 import com.arka.usermcsv.application.service.UserService;
 import com.arka.usermcsv.domain.model.User;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,18 +22,18 @@ public class AuthController {
   private final UserService userService;
 
   @PostMapping("/register")
-  public ResponseEntity<ResponseDto<UserResponseDto>> register(@RequestBody UserRequestDto request) {
+  public ResponseEntity<ResponseDto<UserResponseDto>> register(@Valid @RequestBody UserRequestDto request) {
     return ResponseEntity.ok(new ResponseDto<>(userService.register(request)));
   }
 
   @PostMapping("/login")
-  public ResponseEntity<ResponseDto<AuthResponseDto>> login(@RequestBody AuthRequestDto request) {
+  public ResponseEntity<ResponseDto<AuthResponseDto>> login(@Valid @RequestBody AuthRequestDto request) {
     AuthResponseDto response = authService.login(request.getEmail(), request.getPassword());
     return ResponseEntity.ok(new ResponseDto<>(response));
   }
 
   @PostMapping("/refresh")
-  public ResponseEntity<ResponseDto<TokenResponseDto>> refresh(@RequestBody RefreshTokenRequestDto request) {
+  public ResponseEntity<ResponseDto<TokenResponseDto>> refresh(@Valid @RequestBody RefreshTokenRequestDto request) {
 
     User user = userService.findByRefreshToken(request.getRefreshToken());
     String newAccessToken = tokenService.generateAccessToken(user);
