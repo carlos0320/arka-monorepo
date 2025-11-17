@@ -45,6 +45,26 @@ pipeline {
             }
         }
 
+        stage('Build Docker image - order-mcsv') {
+            steps {
+                script {
+                    echo 'Construyendo imagen Docker para order-mcsv...'
+
+                    // Nombre de la imagen local, incluyendo el número de build de Jenkins
+                    def imageName = "arka-order-mcsv:jenkins-${env.BUILD_NUMBER}"
+
+                    sh """
+                      docker build \
+                        -f order-mcsv/Dockerfile \
+                        -t ${imageName} \
+                        .
+                    """
+
+                    echo "Imagen construida: ${imageName}"
+                }
+            }
+        }
+
         stage('Docker sanity check') {
             steps {
                 echo 'Verificando que Jenkins puede usar Docker...'
