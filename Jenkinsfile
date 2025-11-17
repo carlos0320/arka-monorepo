@@ -4,6 +4,8 @@ pipeline {
     environment {
         AWS_REGION     = 'us-east-1'
         AWS_ACCOUNT_ID = '634547947021'
+        ECS_CLUSTER_NAME = 'arka-prod-ecs-cluster'
+        ECS_ORDER_SERVICE_NAME = 'order-mcsv'
     }
 
     stages {
@@ -91,13 +93,12 @@ pipeline {
                 script {
                     echo 'Haciendo login en ECR y haciendo push de la imagen de order-mcsv...'
 
-                    // Imagen local que construimos en el stage anterior
                     def localImage = "arka-order-mcsv:jenkins-${env.BUILD_NUMBER}"
 
-                    // Repo y tag en ECR
-                    def ecrRepo = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/order-service"
-                    def ecrTag  = "jenkins-${env.BUILD_NUMBER}"
-                    def ecrImage = "${ecrRepo}:${ecrTag}"
+                    def ecrRepo       = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/order-service"
+                    def ecrTag        = "jenkins-${env.BUILD_NUMBER}"
+                    def ecrImage      = "${ecrRepo}:${ecrTag}"
+                    def ecrImageLatest = "${ecrRepo}:latest"
 
                     withCredentials([
                         usernamePassword(
@@ -106,23 +107,55 @@ pipeline {
                             passwordVariable: 'AWS_SECRET_ACCESS_KEY'
                         )
                     ]) {
-                        // AWS CLI usa estas variables de entorno automáticamente
                         sh """
                           # Login en ECR
                           aws ecr get-login-password --region ${env.AWS_REGION} \
                             | docker login --username AWS --password-stdin ${ecrRepo}
 
-                          # Tag local -> ECR
+                          # Tag local -> tags en ECR
                           docker tag ${localImage} ${ecrImage}
+                          docker tag ${localImage} ${ecrImageLatest}
 
-                          # Push a ECR
+                          # Push ambos tags
                           docker push ${ecrImage}
+                          docker push ${ecrImageLatest}
                         """
                     }
 
-                    echo "Imagen subida a ECR: ${ecrImage}"
+                    echo "Imágenes subidas a ECR:"
+                    echo " - ${ecrImage}"
+                    echo " - ${ecrImageLatest}"
                 }
             }
         }
+
+        stage('Deploy to ECS - order-mcsv') {
+            steps {
+                script {
+                    echo "Desplegando nueva versión de order-mcsv en ECS..."
+                    echo "Cluster: ${env.ECS_CLUSTER_NAME}"
+                    echo "Service: ${env.ECS_ORDER_SERVICE_NAME}"
+
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'aws-arka-creds',
+                            usernameVariable: 'AWS_ACCESS_KEY_ID',
+                            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                        )
+                    ]) {
+                        sh """
+                          aws ecs update-service \
+                            --cluster ${env.ECS_CLUSTER_NAME} \
+                            --service ${env.ECS_ORDER_SERVICE_NAME} \
+                            --force-new-deployment \
+                            --region ${env.AWS_REGION}
+                        """
+                    }
+
+                    echo "Comando de update-service enviado. ECS hará el rolling deployment con la imagen :latest."
+                }
+            }
+        }
+
     }
 }
