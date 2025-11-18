@@ -115,4 +115,4 @@ flowchart LR
     D2 --> D3
 
     D3 --> I2
-    I2 --> I3
+    I2 --> I3  <-- Se eliminaron los '...'
