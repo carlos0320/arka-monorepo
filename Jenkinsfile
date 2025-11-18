@@ -26,47 +26,47 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
-                    // Commit exitoso previo (puede ser null en el primer build)
+                    // Commit exitoso previo
                     def previousCommit = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT
 
-                    // Lista fija de microservicios que queremos trackear
+                    // Microservicios a monitorear
                     def services = [
                         'user-mcsv',
                         'api-gateway',
                         'inventory-mcsv',
                         'order-mcsv',
-                        'cart-mcsv',
-                        'notification-mcsv'
+                        'cart-mcsv'
                     ]
 
                     if (!previousCommit) {
-                        echo 'No hay build exitoso previo. Asumiendo que TODOS los microservicios cambiaron.'
+                        echo 'No hay build exitoso previo. Marcando todos los microservicios como cambiados.'
                         env.CHANGED_SERVICES = services.join(',')
                     } else {
                         echo "Comparando cambios entre ${previousCommit} y ${currentCommit}..."
 
-                        // Archivos cambiados entre el commit previo exitoso y el actual
+                        // Archivos cambiados
                         def changedFilesRaw = sh(
                             script: "git diff --name-only ${previousCommit} ${currentCommit} || echo ''",
                             returnStdout: true
                         ).trim()
 
-                        def changedFiles = changedFilesRaw ? changedFilesRaw.split('\n') : []
+                        // Convertimos a lista (seguro)
+                        def changedFiles = changedFilesRaw ? changedFilesRaw.split('\n') as List : []
 
-                        if (changedFiles.isEmpty()) {
-                            echo 'No se detectaron archivos modificados entre los commits.'
+                        if (!changedFiles) {
+                            echo 'No se detectaron archivos modificados.'
                         } else {
-                            echo 'Archivos modificados:'
+                            echo "Archivos modificados:"
                             changedFiles.each { echo " - ${it}" }
                         }
 
-                        // Detectar qué servicios tienen archivos cambiados
+                        // Detectamos microservicios
                         def changedServices = services.findAll { svc ->
                             changedFiles.any { path -> path.startsWith("${svc}/") }
                         }
 
-                        if (changedServices.isEmpty()) {
-                            echo 'No se detectaron cambios específicos en microservicios.'
+                        if (!changedServices) {
+                            echo 'No se detectaron cambios en microservicios.'
                             env.CHANGED_SERVICES = ''
                         } else {
                             echo "Microservicios cambiados: ${changedServices}"
@@ -74,7 +74,7 @@ pipeline {
                         }
                     }
 
-                    echo "➡ CHANGED_SERVICES = '${env.CHANGED_SERVICES}'"
+                    echo "➡ Resultado final: CHANGED_SERVICES = '${env.CHANGED_SERVICES}'"
                 }
             }
         }
