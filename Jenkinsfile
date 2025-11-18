@@ -15,6 +15,70 @@ pipeline {
             }
         }
 
+        stage('Detect changed microservices') {
+            steps {
+                script {
+                    echo 'Detectando microservicios cambiados...'
+
+                    // Commit actual
+                    def currentCommit = sh(
+                        script: 'git rev-parse HEAD',
+                        returnStdout: true
+                    ).trim()
+
+                    // Commit exitoso previo (puede ser null en el primer build)
+                    def previousCommit = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT
+
+                    // Lista fija de microservicios que queremos trackear
+                    def services = [
+                        'user-mcsv',
+                        'api-gateway',
+                        'inventory-mcsv',
+                        'order-mcsv',
+                        'cart-mcsv',
+                        'notification-mcsv'
+                    ]
+
+                    if (!previousCommit) {
+                        echo 'No hay build exitoso previo. Asumiendo que TODOS los microservicios cambiaron.'
+                        env.CHANGED_SERVICES = services.join(',')
+                    } else {
+                        echo "Comparando cambios entre ${previousCommit} y ${currentCommit}..."
+
+                        // Archivos cambiados entre el commit previo exitoso y el actual
+                        def changedFilesRaw = sh(
+                            script: "git diff --name-only ${previousCommit} ${currentCommit} || echo ''",
+                            returnStdout: true
+                        ).trim()
+
+                        def changedFiles = changedFilesRaw ? changedFilesRaw.split('\n') : []
+
+                        if (changedFiles.isEmpty()) {
+                            echo 'No se detectaron archivos modificados entre los commits.'
+                        } else {
+                            echo 'Archivos modificados:'
+                            changedFiles.each { echo " - ${it}" }
+                        }
+
+                        // Detectar qué servicios tienen archivos cambiados
+                        def changedServices = services.findAll { svc ->
+                            changedFiles.any { path -> path.startsWith("${svc}/") }
+                        }
+
+                        if (changedServices.isEmpty()) {
+                            echo 'No se detectaron cambios específicos en microservicios.'
+                            env.CHANGED_SERVICES = ''
+                        } else {
+                            echo "Microservicios cambiados: ${changedServices}"
+                            env.CHANGED_SERVICES = changedServices.join(',')
+                        }
+                    }
+
+                    echo "➡ CHANGED_SERVICES = '${env.CHANGED_SERVICES}'"
+                }
+            }
+        }
+
         stage('Verify tools (Java & Maven)') {
             steps {
                 echo 'Mostrando versiones de Java y Maven...'
@@ -85,75 +149,6 @@ pipeline {
             steps {
                 echo 'Verificando que Jenkins puede usar AWS CLI...'
                 sh 'aws --version || echo "AWS CLI no disponible"'
-            }
-        }
-
-        stage('Push Docker image to ECR - order-mcsv') {
-            steps {
-                script {
-                    echo 'Haciendo login en ECR y haciendo push de la imagen de order-mcsv...'
-
-                    def localImage = "arka-order-mcsv:jenkins-${env.BUILD_NUMBER}"
-
-                    def ecrRepo       = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/order-service"
-                    def ecrTag        = "jenkins-${env.BUILD_NUMBER}"
-                    def ecrImage      = "${ecrRepo}:${ecrTag}"
-                    def ecrImageLatest = "${ecrRepo}:latest"
-
-                    withCredentials([
-                        usernamePassword(
-                            credentialsId: 'aws-arka-creds',
-                            usernameVariable: 'AWS_ACCESS_KEY_ID',
-                            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                        )
-                    ]) {
-                        sh """
-                          # Login en ECR
-                          aws ecr get-login-password --region ${env.AWS_REGION} \
-                            | docker login --username AWS --password-stdin ${ecrRepo}
-
-                          # Tag local -> tags en ECR
-                          docker tag ${localImage} ${ecrImage}
-                          docker tag ${localImage} ${ecrImageLatest}
-
-                          # Push ambos tags
-                          docker push ${ecrImage}
-                          docker push ${ecrImageLatest}
-                        """
-                    }
-
-                    echo "Imágenes subidas a ECR:"
-                    echo " - ${ecrImage}"
-                    echo " - ${ecrImageLatest}"
-                }
-            }
-        }
-
-        stage('Deploy to ECS - order-mcsv') {
-            steps {
-                script {
-                    echo "Desplegando nueva versión de order-mcsv en ECS..."
-                    echo "Cluster: ${env.ECS_CLUSTER_NAME}"
-                    echo "Service: ${env.ECS_ORDER_SERVICE_NAME}"
-
-                    withCredentials([
-                        usernamePassword(
-                            credentialsId: 'aws-arka-creds',
-                            usernameVariable: 'AWS_ACCESS_KEY_ID',
-                            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
-                        )
-                    ]) {
-                        sh """
-                          aws ecs update-service \
-                            --cluster ${env.ECS_CLUSTER_NAME} \
-                            --service ${env.ECS_ORDER_SERVICE_NAME} \
-                            --force-new-deployment \
-                            --region ${env.AWS_REGION}
-                        """
-                    }
-
-                    echo "Comando de update-service enviado. ECS hará el rolling deployment con la imagen :latest."
-                }
             }
         }
 
