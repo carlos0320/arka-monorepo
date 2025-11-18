@@ -102,7 +102,7 @@ flowchart LR
 
     subgraph Infrastructure
         I1[Controllers REST]
-        I2[Repositories reactivos (R2DBC)]
+        I2[Repositories R2DBC]
         I3[Entities DB]
         I4[RabbitMQ Config + Listeners]
         I5[DTOs y Mappers]
