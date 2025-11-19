@@ -35,7 +35,8 @@ pipeline {
                         'api-gateway',
                         'inventory-mcsv',
                         'order-mcsv',
-                        'cart-mcsv'
+                        'cart-mcsv',
+                        'notification'
                     ]
 
                     if (!previousCommit) {
@@ -50,7 +51,7 @@ pipeline {
                             returnStdout: true
                         ).trim()
 
-                        // Convertimos a lista (seguro)
+                        // Convertimos a lista
                         def changedFiles = changedFilesRaw ? changedFilesRaw.split('\n') as List : []
 
                         if (!changedFiles) {
@@ -121,26 +122,6 @@ pipeline {
                 echo 'Verificando que Jenkins puede usar Docker...'
                 sh 'docker version'
                 sh 'docker ps'
-            }
-        }
-
-        stage('Build Docker image - order-mcsv') {
-            steps {
-                script {
-                    echo 'Construyendo imagen Docker para order-mcsv...'
-
-                    // Nombre de la imagen local, incluyendo el número de build de Jenkins
-                    def imageName = "arka-order-mcsv:jenkins-${env.BUILD_NUMBER}"
-
-                    sh """
-                      docker build \
-                        -f order-mcsv/Dockerfile \
-                        -t ${imageName} \
-                        .
-                    """
-
-                    echo "Imagen construida: ${imageName}"
-                }
             }
         }
 
