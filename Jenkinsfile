@@ -337,7 +337,7 @@ pipeline {
                 script {
                     echo 'Haciendo login en ECR y haciendo push de la imagen de cart-mcsv...'
 
-                    def localImage = "arka-api-cart:jenkins-${env.BUILD_NUMBER}"
+                    def localImage = "arka-cart:jenkins-${env.BUILD_NUMBER}"
 
                     def ecrRepo       = env.ECR_CART_REPO
                     def ecrTag        = "jenkins-${env.BUILD_NUMBER}"
