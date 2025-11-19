@@ -13,6 +13,8 @@ pipeline {
         ECS_APIGW_SERVICE_NAME     = 'api-gateway-svc'
         ECS_NOTIFICATION_SERVICE_NAME = 'notification-service'
 
+        ECS_USER_TASK_FAMILY = 'user-mcsv-taskdef'
+
         ECR_USER_REPO      = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/user-service"
         ECR_ORDER_REPO     = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/order-service"
         ECR_CART_REPO      = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/cart-service"
@@ -28,70 +30,7 @@ pipeline {
             }
         }
 
-        stage('Detect changed microservices') {
-            steps {
-                script {
-                    echo 'Detectando microservicios cambiados...'
 
-                    // Commit actual
-                    def currentCommit = sh(
-                        script: 'git rev-parse HEAD',
-                        returnStdout: true
-                    ).trim()
-
-                    // Commit exitoso previo
-                    def previousCommit = env.GIT_PREVIOUS_SUCCESSFUL_COMMIT
-
-                    // Microservicios a monitorear
-                    def services = [
-                        'user-mcsv',
-                        'api-gateway',
-                        'inventory-mcsv',
-                        'order-mcsv',
-                        'cart-mcsv',
-                        'notification'
-                    ]
-
-                    if (!previousCommit) {
-                        echo 'No hay build exitoso previo. Marcando todos los microservicios como cambiados.'
-                        env.CHANGED_SERVICES = services.join(',')
-                    } else {
-                        echo "Comparando cambios entre ${previousCommit} y ${currentCommit}..."
-
-                        // Archivos cambiados
-                        def changedFilesRaw = sh(
-                            script: "git diff --name-only ${previousCommit} ${currentCommit} || echo ''",
-                            returnStdout: true
-                        ).trim()
-
-                        // Convertimos a lista
-                        def changedFiles = changedFilesRaw ? changedFilesRaw.split('\n') as List : []
-
-                        if (!changedFiles) {
-                            echo 'No se detectaron archivos modificados.'
-                        } else {
-                            echo "Archivos modificados:"
-                            changedFiles.each { echo " - ${it}" }
-                        }
-
-                        // Detectamos microservicios
-                        def changedServices = services.findAll { svc ->
-                            changedFiles.any { path -> path.startsWith("${svc}/") }
-                        }
-
-                        if (!changedServices) {
-                            echo 'No se detectaron cambios en microservicios.'
-                            env.CHANGED_SERVICES = ''
-                        } else {
-                            echo "Microservicios cambiados: ${changedServices}"
-                            env.CHANGED_SERVICES = changedServices.join(',')
-                        }
-                    }
-
-                    echo "➡ Resultado final: CHANGED_SERVICES = '${env.CHANGED_SERVICES}'"
-                }
-            }
-        }
 
         stage('Verify tools (Java & Maven)') {
             steps {
@@ -259,8 +198,7 @@ pipeline {
                 script {
                     echo 'Haciendo login en ECR y haciendo push de la imagen de user-mcsv...'
 
-                    def localImage = "arka-user-mcsv:jenkins-${env.BUILD_NUMBER}"
-
+                    def localImage     = "arka-user-mcsv:jenkins-${env.BUILD_NUMBER}"
                     def ecrRepo        = env.ECR_USER_REPO
                     def ecrTag         = "jenkins-${env.BUILD_NUMBER}"
                     def ecrImage       = "${ecrRepo}:${ecrTag}"
@@ -295,12 +233,10 @@ pipeline {
             }
         }
 
-        stage('Deploy to ECS - user-mcsv') {
+         stage('Deploy to ECS - user-mcsv') {
             steps {
                 script {
-                    echo "Desplegando nueva versión de user-mcsv en ECS..."
-                    echo "Cluster: ${env.ECS_CLUSTER_NAME}"
-                    echo "Service: ${env.ECS_USER_SERVICE_NAME}"
+                    echo "Registrando nueva Task Definition y desplegando user-mcsv en ECS..."
 
                     withCredentials([
                         usernamePassword(
@@ -309,16 +245,56 @@ pipeline {
                             passwordVariable: 'AWS_SECRET_ACCESS_KEY'
                         )
                     ]) {
-                        sh """
-                          aws ecs update-service \
-                            --cluster ${env.ECS_CLUSTER_NAME} \
-                            --service ${env.ECS_USER_SERVICE_NAME} \
-                            --force-new-deployment \
-                            --region ${env.AWS_REGION}
-                        """
-                    }
+                        sh '''
+                          set -e
 
-                    echo "Comando de update-service enviado para user-mcsv."
+                          FAMILY="${ECS_USER_TASK_FAMILY}"
+                          CLUSTER="${ECS_CLUSTER_NAME}"
+                          SERVICE="${ECS_USER_SERVICE_NAME}"
+                          REGION="${AWS_REGION}"
+
+                          # Usamos la imagen versionada de este build
+                          NEW_IMAGE="${ECR_USER_REPO}:jenkins-${BUILD_NUMBER}"
+                          echo "Usando imagen para nueva Task Definition: ${NEW_IMAGE}"
+
+                          echo "Obteniendo Task Definition base..."
+                          aws ecs describe-task-definition \
+                            --task-definition "${FAMILY}" \
+                            --query 'taskDefinition' \
+                            --output json > base-td-user.json
+
+                          echo "Construyendo nueva Task Definition con la imagen actual..."
+                          cat base-td-user.json | jq --arg IMAGE "$NEW_IMAGE" '
+                              .containerDefinitions[0].image = $IMAGE
+                              | del(
+                                  .taskDefinitionArn,
+                                  .revision,
+                                  .status,
+                                  .requiresAttributes,
+                                  .compatibilities,
+                                  .registeredAt,
+                                  .registeredBy
+                                )
+                            ' > new-td-user.json
+
+                          echo "Registrando nueva Task Definition..."
+                          NEW_TD_ARN=$(aws ecs register-task-definition \
+                            --cli-input-json file://new-td-user.json \
+                            --query 'taskDefinition.taskDefinitionArn' \
+                            --output text)
+
+                          echo "Nueva Task Definition registrada: ${NEW_TD_ARN}"
+
+                          echo "Actualizando servicio ECS para usar la nueva Task Definition..."
+                          aws ecs update-service \
+                            --cluster "${CLUSTER}" \
+                            --service "${SERVICE}" \
+                            --task-definition "${NEW_TD_ARN}" \
+                            --region "${REGION}"
+
+                          echo "Deploy enviado. ECS hará el rolling deployment con la Task Definition nueva."
+                        '''
+                    }
                 }
             }
         }
