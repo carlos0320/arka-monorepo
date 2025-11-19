@@ -13,7 +13,14 @@ pipeline {
         ECS_APIGW_SERVICE_NAME     = 'api-gateway-svc'
         ECS_NOTIFICATION_SERVICE_NAME = 'notification-service'
 
-        ECS_USER_TASK_FAMILY = 'user-mcsv-taskdef'
+
+        ECS_USER_TASK_FAMILY      = 'user-mcsv-taskdef'
+        ECS_ORDER_TASK_FAMILY     = 'order-mcsv-taskdef'
+        ECS_INVENTORY_TASK_FAMILY = 'inventory-mcsv-taskdef'
+        ECS_CART_TASK_FAMILY      = 'cart-mcsv-taskdef'
+        ECS_APIGW_TASK_FAMILY     = 'api-gateway-taskdef'
+        ECS_NOTIFICATION_TASK_FAMILY = 'notification-mcsv-taskdef'
+
 
         ECR_USER_REPO      = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/user-service"
         ECR_ORDER_REPO     = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/order-service"
@@ -84,6 +91,24 @@ pipeline {
             }
         }
 
+        stage('Build Docker image - inventory-mcsv') {
+            steps {
+                script {
+                    echo 'Construyendo imagen Docker para inventory-mcsv...'
+                    def imageName = "arka-inventory-mcsv:jenkins-${env.BUILD_NUMBER}"
+
+                    sh """
+                      docker build \
+                        -f inventory-mcsv/Dockerfile \
+                        -t ${imageName} \
+                        .
+                    """
+
+                    echo "Imagen construida: ${imageName}"
+                }
+            }
+        }
+
         stage('Build Docker image - order-mcsv') {
             steps {
                 script {
@@ -103,6 +128,81 @@ pipeline {
                 }
             }
         }
+
+        stage('Build Docker image - cart-mcsv') {
+            steps {
+                script {
+                    echo 'Construyendo imagen Docker para cart-mcsv...'
+                    def imageName = "arka-cart-mcsv:jenkins-${env.BUILD_NUMBER}"
+
+                    sh """
+                      docker build \
+                        -f cart-mcsv/Dockerfile \
+                        -t ${imageName} \
+                        .
+                    """
+
+                    echo "Imagen construida: ${imageName}"
+                }
+            }
+        }
+
+        stage('Build Docker image - api-gateway') {
+            steps {
+                script {
+                    echo 'Construyendo imagen Docker para api-gateway...'
+                    def imageName = "arka-api-gateway:jenkins-${env.BUILD_NUMBER}"
+
+                    sh """
+                      docker build \
+                        -f api-gateway/Dockerfile \
+                        -t ${imageName} \
+                        .
+                    """
+
+                    echo "Imagen construida: ${imageName}"
+                }
+            }
+        }
+
+        stage('Build Docker image - notification') {
+            steps {
+                script {
+                    echo 'Construyendo imagen Docker para notification..'
+                    def imageName = "arka-notification:jenkins-${env.BUILD_NUMBER}"
+
+                    sh """
+                      docker build \
+                        -f notification-mcsv/Dockerfile \
+                        -t ${imageName} \
+                        .
+                    """
+
+                    echo "Imagen construida: ${imageName}"
+                }
+            }
+        }
+
+         stage('Build Docker image - user-mcsv') {
+            steps {
+                script {
+                    echo 'Construyendo imagen Docker para user-mcsv...'
+
+                    // Nombre de la imagen local, incluyendo el número de build de Jenkins
+                    def imageName = "arka-user-mcsv:jenkins-${env.BUILD_NUMBER}"
+
+                    sh """
+                      docker build \
+                        -f user-mcsv/Dockerfile \
+                        -t ${imageName} \
+                        .
+                    """
+
+                    echo "Imagen construida: ${imageName}"
+                }
+            }
+        }
+
 
         stage('Push Docker image to ECR - order-mcsv') {
             steps {
@@ -145,12 +245,18 @@ pipeline {
             }
         }
 
-        stage('Deploy to ECS - order-mcsv') {
+        // PUSH inventario ECR
+         stage('Push Docker image to ECR - inventory-mcsv') {
             steps {
                 script {
-                    echo "Desplegando nueva versión de order-mcsv en ECS..."
-                    echo "Cluster: ${env.ECS_CLUSTER_NAME}"
-                    echo "Service: ${env.ECS_ORDER_SERVICE_NAME}"
+                    echo 'Haciendo login en ECR y haciendo push de la imagen de inventory-mcsv...'
+
+                    def localImage = "arka-inventory-mcsv:jenkins-${env.BUILD_NUMBER}"
+
+                    def ecrRepo       = env.ECR_INVENTORY_REPO
+                    def ecrTag        = "jenkins-${env.BUILD_NUMBER}"
+                    def ecrImage      = "${ecrRepo}:${ecrTag}"
+                    def ecrImageLatest = "${ecrRepo}:latest"
 
                     withCredentials([
                         usernamePassword(
@@ -160,35 +266,152 @@ pipeline {
                         )
                     ]) {
                         sh """
-                          aws ecs update-service \
-                            --cluster ${env.ECS_CLUSTER_NAME} \
-                            --service ${env.ECS_ORDER_SERVICE_NAME} \
-                            --force-new-deployment \
-                            --region ${env.AWS_REGION}
+                          # Login en ECR
+                          aws ecr get-login-password --region ${env.AWS_REGION} \
+                            | docker login --username AWS --password-stdin ${ecrRepo}
+
+                          # Tag local -> tags en ECR
+                          docker tag ${localImage} ${ecrImage}
+                          docker tag ${localImage} ${ecrImageLatest}
+
+                          # Push ambos tags
+                          docker push ${ecrImage}
+                          docker push ${ecrImageLatest}
                         """
                     }
 
-                    echo "Comando de update-service enviado"
+                    echo "Imágenes subidas a ECR:"
+                    echo " - ${ecrImage}"
+                    echo " - ${ecrImageLatest}"
                 }
             }
         }
 
-         stage('Build Docker image - user-mcsv') {
+
+        // PUSH apigateway ECR
+         stage('Push Docker image to ECR - api-gateway') {
             steps {
                 script {
-                    echo 'Construyendo imagen Docker para user-mcsv...'
+                    echo 'Haciendo login en ECR y haciendo push de la imagen de api-gateway...'
 
-                    // Nombre de la imagen local, incluyendo el número de build de Jenkins
-                    def imageName = "arka-user-mcsv:jenkins-${env.BUILD_NUMBER}"
+                    def localImage = "arka-api-gateway:jenkins-${env.BUILD_NUMBER}"
 
-                    sh """
-                      docker build \
-                        -f user-mcsv/Dockerfile \
-                        -t ${imageName} \
-                        .
-                    """
+                    def ecrRepo       = env.ECR_APIGW_REPO
+                    def ecrTag        = "jenkins-${env.BUILD_NUMBER}"
+                    def ecrImage      = "${ecrRepo}:${ecrTag}"
+                    def ecrImageLatest = "${ecrRepo}:latest"
 
-                    echo "Imagen construida: ${imageName}"
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'aws-arka-creds',
+                            usernameVariable: 'AWS_ACCESS_KEY_ID',
+                            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                        )
+                    ]) {
+                        sh """
+                          # Login en ECR
+                          aws ecr get-login-password --region ${env.AWS_REGION} \
+                            | docker login --username AWS --password-stdin ${ecrRepo}
+
+                          # Tag local -> tags en ECR
+                          docker tag ${localImage} ${ecrImage}
+                          docker tag ${localImage} ${ecrImageLatest}
+
+                          # Push ambos tags
+                          docker push ${ecrImage}
+                          docker push ${ecrImageLatest}
+                        """
+                    }
+
+                    echo "Imágenes subidas a ECR:"
+                    echo " - ${ecrImage}"
+                    echo " - ${ecrImageLatest}"
+                }
+            }
+        }
+
+
+        // PUSH apigateway ECR
+         stage('Push Docker image to ECR - cart-mcsv') {
+            steps {
+                script {
+                    echo 'Haciendo login en ECR y haciendo push de la imagen de cart-mcsv...'
+
+                    def localImage = "arka-api-cart:jenkins-${env.BUILD_NUMBER}"
+
+                    def ecrRepo       = env.ECR_CART_REPO
+                    def ecrTag        = "jenkins-${env.BUILD_NUMBER}"
+                    def ecrImage      = "${ecrRepo}:${ecrTag}"
+                    def ecrImageLatest = "${ecrRepo}:latest"
+
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'aws-arka-creds',
+                            usernameVariable: 'AWS_ACCESS_KEY_ID',
+                            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                        )
+                    ]) {
+                        sh """
+                          # Login en ECR
+                          aws ecr get-login-password --region ${env.AWS_REGION} \
+                            | docker login --username AWS --password-stdin ${ecrRepo}
+
+                          # Tag local -> tags en ECR
+                          docker tag ${localImage} ${ecrImage}
+                          docker tag ${localImage} ${ecrImageLatest}
+
+                          # Push ambos tags
+                          docker push ${ecrImage}
+                          docker push ${ecrImageLatest}
+                        """
+                    }
+
+                    echo "Imágenes subidas a ECR:"
+                    echo " - ${ecrImage}"
+                    echo " - ${ecrImageLatest}"
+                }
+            }
+        }
+
+
+        // PUSH notificaciones ECR
+         stage('Push Docker image to ECR - notificaciones') {
+            steps {
+                script {
+                    echo 'Haciendo login en ECR y haciendo push de la imagen de notificaciones...'
+
+                    def localImage = "arka-api-notification:jenkins-${env.BUILD_NUMBER}"
+
+                    def ecrRepo       = env.ECR_NOTIFICATION_REPO
+                    def ecrTag        = "jenkins-${env.BUILD_NUMBER}"
+                    def ecrImage      = "${ecrRepo}:${ecrTag}"
+                    def ecrImageLatest = "${ecrRepo}:latest"
+
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'aws-arka-creds',
+                            usernameVariable: 'AWS_ACCESS_KEY_ID',
+                            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                        )
+                    ]) {
+                        sh """
+                          # Login en ECR
+                          aws ecr get-login-password --region ${env.AWS_REGION} \
+                            | docker login --username AWS --password-stdin ${ecrRepo}
+
+                          # Tag local -> tags en ECR
+                          docker tag ${localImage} ${ecrImage}
+                          docker tag ${localImage} ${ecrImageLatest}
+
+                          # Push ambos tags
+                          docker push ${ecrImage}
+                          docker push ${ecrImageLatest}
+                        """
+                    }
+
+                    echo "Imágenes subidas a ECR:"
+                    echo " - ${ecrImage}"
+                    echo " - ${ecrImageLatest}"
                 }
             }
         }
@@ -233,6 +456,7 @@ pipeline {
             }
         }
 
+        // DEPLOY ECS USUARIO
          stage('Deploy to ECS - user-mcsv') {
             steps {
                 script {
@@ -299,5 +523,340 @@ pipeline {
             }
         }
 
+        // DEPLOY ECS API-GATEWAY
+         stage('Deploy to ECS - apigateway') {
+            steps {
+                script {
+                    echo "Registrando nueva Task Definition y desplegando apigateway en ECS..."
+
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'aws-arka-creds',
+                            usernameVariable: 'AWS_ACCESS_KEY_ID',
+                            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                        )
+                    ]) {
+                        sh '''
+                          set -e
+
+                          FAMILY="${ECS_APIGW_TASK_FAMILY}"
+                          CLUSTER="${ECS_CLUSTER_NAME}"
+                          SERVICE="${ECS_APIGW_SERVICE_NAME}"
+                          REGION="${AWS_REGION}"
+
+                          # Usamos la imagen versionada de este build
+                          NEW_IMAGE="${ECR_APIGW_REPO}:jenkins-${BUILD_NUMBER}"
+                          echo "Usando imagen para nueva Task Definition: ${NEW_IMAGE}"
+
+                          echo "Obteniendo Task Definition base..."
+                          aws ecs describe-task-definition \
+                            --task-definition "${FAMILY}" \
+                            --query 'taskDefinition' \
+                            --output json > base-td-user.json
+
+                          echo "Construyendo nueva Task Definition con la imagen actual..."
+                          cat base-td-user.json | jq --arg IMAGE "$NEW_IMAGE" '
+                              .containerDefinitions[0].image = $IMAGE
+                              | del(
+                                  .taskDefinitionArn,
+                                  .revision,
+                                  .status,
+                                  .requiresAttributes,
+                                  .compatibilities,
+                                  .registeredAt,
+                                  .registeredBy
+                                )
+                            ' > new-td-user.json
+
+                          echo "Registrando nueva Task Definition..."
+                          NEW_TD_ARN=$(aws ecs register-task-definition \
+                            --cli-input-json file://new-td-user.json \
+                            --query 'taskDefinition.taskDefinitionArn' \
+                            --output text)
+
+                          echo "Nueva Task Definition registrada: ${NEW_TD_ARN}"
+
+                          echo "Actualizando servicio ECS para usar la nueva Task Definition..."
+                          aws ecs update-service \
+                            --cluster "${CLUSTER}" \
+                            --service "${SERVICE}" \
+                            --task-definition "${NEW_TD_ARN}" \
+                            --region "${REGION}"
+
+                          echo "Deploy enviado."
+                        '''
+                    }
+                }
+            }
+        }
+
+        // DEPLOY ECS INVENTORY
+         stage('Deploy to ECS - inventory') {
+            steps {
+                script {
+                    echo "Registrando nueva Task Definition y desplegando inventory en ECS..."
+
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'aws-arka-creds',
+                            usernameVariable: 'AWS_ACCESS_KEY_ID',
+                            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                        )
+                    ]) {
+                        sh '''
+                          set -e
+
+                          FAMILY="${ECS_INVENTORY_TASK_FAMILY}"
+                          CLUSTER="${ECS_CLUSTER_NAME}"
+                          SERVICE="${ECS_INVENTORY_SERVICE_NAME}"
+                          REGION="${AWS_REGION}"
+
+                          # Usamos la imagen versionada de este build
+                          NEW_IMAGE="${ECR_INVENTORY_REPO}:jenkins-${BUILD_NUMBER}"
+                          echo "Usando imagen para nueva Task Definition: ${NEW_IMAGE}"
+
+                          echo "Obteniendo Task Definition base..."
+                          aws ecs describe-task-definition \
+                            --task-definition "${FAMILY}" \
+                            --query 'taskDefinition' \
+                            --output json > base-td-user.json
+
+                          echo "Construyendo nueva Task Definition con la imagen actual..."
+                          cat base-td-user.json | jq --arg IMAGE "$NEW_IMAGE" '
+                              .containerDefinitions[0].image = $IMAGE
+                              | del(
+                                  .taskDefinitionArn,
+                                  .revision,
+                                  .status,
+                                  .requiresAttributes,
+                                  .compatibilities,
+                                  .registeredAt,
+                                  .registeredBy
+                                )
+                            ' > new-td-user.json
+
+                          echo "Registrando nueva Task Definition..."
+                          NEW_TD_ARN=$(aws ecs register-task-definition \
+                            --cli-input-json file://new-td-user.json \
+                            --query 'taskDefinition.taskDefinitionArn' \
+                            --output text)
+
+                          echo "Nueva Task Definition registrada: ${NEW_TD_ARN}"
+
+                          echo "Actualizando servicio ECS para usar la nueva Task Definition..."
+                          aws ecs update-service \
+                            --cluster "${CLUSTER}" \
+                            --service "${SERVICE}" \
+                            --task-definition "${NEW_TD_ARN}" \
+                            --region "${REGION}"
+
+                          echo "Deploy enviado."
+                        '''
+                    }
+                }
+            }
+        }
+
+
+        // DEPLOY ECS CART
+         stage('Deploy to ECS - cart') {
+            steps {
+                script {
+                    echo "Registrando nueva Task Definition y desplegando cart en ECS..."
+
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'aws-arka-creds',
+                            usernameVariable: 'AWS_ACCESS_KEY_ID',
+                            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                        )
+                    ]) {
+                        sh '''
+                          set -e
+
+                          FAMILY="${ECS_CART_TASK_FAMILY}"
+                          CLUSTER="${ECS_CLUSTER_NAME}"
+                          SERVICE="${ECS_CART_SERVICE_NAME}"
+                          REGION="${AWS_REGION}"
+
+                          # Usamos la imagen versionada de este build
+                          NEW_IMAGE="${ECR_CART_REPO}:jenkins-${BUILD_NUMBER}"
+                          echo "Usando imagen para nueva Task Definition: ${NEW_IMAGE}"
+
+                          echo "Obteniendo Task Definition base..."
+                          aws ecs describe-task-definition \
+                            --task-definition "${FAMILY}" \
+                            --query 'taskDefinition' \
+                            --output json > base-td-user.json
+
+                          echo "Construyendo nueva Task Definition con la imagen actual..."
+                          cat base-td-user.json | jq --arg IMAGE "$NEW_IMAGE" '
+                              .containerDefinitions[0].image = $IMAGE
+                              | del(
+                                  .taskDefinitionArn,
+                                  .revision,
+                                  .status,
+                                  .requiresAttributes,
+                                  .compatibilities,
+                                  .registeredAt,
+                                  .registeredBy
+                                )
+                            ' > new-td-user.json
+
+                          echo "Registrando nueva Task Definition..."
+                          NEW_TD_ARN=$(aws ecs register-task-definition \
+                            --cli-input-json file://new-td-user.json \
+                            --query 'taskDefinition.taskDefinitionArn' \
+                            --output text)
+
+                          echo "Nueva Task Definition registrada: ${NEW_TD_ARN}"
+
+                          echo "Actualizando servicio ECS para usar la nueva Task Definition..."
+                          aws ecs update-service \
+                            --cluster "${CLUSTER}" \
+                            --service "${SERVICE}" \
+                            --task-definition "${NEW_TD_ARN}" \
+                            --region "${REGION}"
+
+                          echo "Deploy enviado."
+                        '''
+                    }
+                }
+            }
+        }
+
+        // DEPLOY ECS ORDER
+         stage('Deploy to ECS - order') {
+            steps {
+                script {
+                    echo "Registrando nueva Task Definition y desplegando order en ECS..."
+
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'aws-arka-creds',
+                            usernameVariable: 'AWS_ACCESS_KEY_ID',
+                            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                        )
+                    ]) {
+                        sh '''
+                          set -e
+
+                          FAMILY="${ECS_ORDER_TASK_FAMILY}"
+                          CLUSTER="${ECS_CLUSTER_NAME}"
+                          SERVICE="${ECS_ORDER_SERVICE_NAME}"
+                          REGION="${AWS_REGION}"
+
+                          # Usamos la imagen versionada de este build
+                          NEW_IMAGE="${ECR_ORDER_REPO}:jenkins-${BUILD_NUMBER}"
+                          echo "Usando imagen para nueva Task Definition: ${NEW_IMAGE}"
+
+                          echo "Obteniendo Task Definition base..."
+                          aws ecs describe-task-definition \
+                            --task-definition "${FAMILY}" \
+                            --query 'taskDefinition' \
+                            --output json > base-td-user.json
+
+                          echo "Construyendo nueva Task Definition con la imagen actual..."
+                          cat base-td-user.json | jq --arg IMAGE "$NEW_IMAGE" '
+                              .containerDefinitions[0].image = $IMAGE
+                              | del(
+                                  .taskDefinitionArn,
+                                  .revision,
+                                  .status,
+                                  .requiresAttributes,
+                                  .compatibilities,
+                                  .registeredAt,
+                                  .registeredBy
+                                )
+                            ' > new-td-user.json
+
+                          echo "Registrando nueva Task Definition..."
+                          NEW_TD_ARN=$(aws ecs register-task-definition \
+                            --cli-input-json file://new-td-user.json \
+                            --query 'taskDefinition.taskDefinitionArn' \
+                            --output text)
+
+                          echo "Nueva Task Definition registrada: ${NEW_TD_ARN}"
+
+                          echo "Actualizando servicio ECS para usar la nueva Task Definition..."
+                          aws ecs update-service \
+                            --cluster "${CLUSTER}" \
+                            --service "${SERVICE}" \
+                            --task-definition "${NEW_TD_ARN}" \
+                            --region "${REGION}"
+
+                          echo "Deploy enviado."
+                        '''
+                    }
+                }
+            }
+        }
+
+        // DEPLOY ECS NOTIFICATION
+         stage('Deploy to ECS - notification') {
+            steps {
+                script {
+                    echo "Registrando nueva Task Definition y desplegando notification en ECS..."
+
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'aws-arka-creds',
+                            usernameVariable: 'AWS_ACCESS_KEY_ID',
+                            passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                        )
+                    ]) {
+                        sh '''
+                          set -e
+
+                          FAMILY="${ECS_NOTIFICATION_TASK_FAMILY}"
+                          CLUSTER="${ECS_CLUSTER_NAME}"
+                          SERVICE="$ECS_NOTIFICATION_SERVICE_NAME}"
+                          REGION="${AWS_REGION}"
+
+                          # Usamos la imagen versionada de este build
+                          NEW_IMAGE="${ECR_NOTIFICATION_REPO}:jenkins-${BUILD_NUMBER}"
+                          echo "Usando imagen para nueva Task Definition: ${NEW_IMAGE}"
+
+                          echo "Obteniendo Task Definition base..."
+                          aws ecs describe-task-definition \
+                            --task-definition "${FAMILY}" \
+                            --query 'taskDefinition' \
+                            --output json > base-td-user.json
+
+                          echo "Construyendo nueva Task Definition con la imagen actual..."
+                          cat base-td-user.json | jq --arg IMAGE "$NEW_IMAGE" '
+                              .containerDefinitions[0].image = $IMAGE
+                              | del(
+                                  .taskDefinitionArn,
+                                  .revision,
+                                  .status,
+                                  .requiresAttributes,
+                                  .compatibilities,
+                                  .registeredAt,
+                                  .registeredBy
+                                )
+                            ' > new-td-user.json
+
+                          echo "Registrando nueva Task Definition..."
+                          NEW_TD_ARN=$(aws ecs register-task-definition \
+                            --cli-input-json file://new-td-user.json \
+                            --query 'taskDefinition.taskDefinitionArn' \
+                            --output text)
+
+                          echo "Nueva Task Definition registrada: ${NEW_TD_ARN}"
+
+                          echo "Actualizando servicio ECS para usar la nueva Task Definition..."
+                          aws ecs update-service \
+                            --cluster "${CLUSTER}" \
+                            --service "${SERVICE}" \
+                            --task-definition "${NEW_TD_ARN}" \
+                            --region "${REGION}"
+
+                          echo "Deploy enviado."
+                        '''
+                    }
+                }
+            }
+        }
     }
 }

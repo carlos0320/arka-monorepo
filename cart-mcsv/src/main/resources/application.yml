@@ -7,8 +7,8 @@ spring:
 
   config:
     import:
-      - ${SECRET_APP_DEV_PATH}
-      - ${SECRET_CART_SERVICE_DEV_PATH}
+      - ${SECRET_APP_PROD_PATH}
+      - ${SECRET_CART_SERVICE_PROD_PATH}
 
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
