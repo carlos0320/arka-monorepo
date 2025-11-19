@@ -5,8 +5,20 @@ pipeline {
         AWS_REGION     = 'us-east-1'
         AWS_ACCOUNT_ID = '634547947021'
         ECS_CLUSTER_NAME = 'arka-prod-ecs-cluster'
-        ECS_ORDER_SERVICE_NAME = 'order-mcsv'
-        ECS_USER_SERVICE_NAME  = 'user-mcsv-svc'
+
+        ECS_USER_SERVICE_NAME      = 'user-mcsv-svc'
+        ECS_ORDER_SERVICE_NAME     = 'order-mcsv'
+        ECS_CART_SERVICE_NAME      = 'cart-mcsv-svc'
+        ECS_INVENTORY_SERVICE_NAME = 'inventory-mcsv-svc'
+        ECS_APIGW_SERVICE_NAME     = 'api-gateway-svc'
+        ECS_NOTIFICATION_SERVICE_NAME = 'notification-service'
+
+        ECR_USER_REPO      = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/user-service"
+        ECR_ORDER_REPO     = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/order-service"
+        ECR_CART_REPO      = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/cart-service"
+        ECR_INVENTORY_REPO = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/inventory-service"
+        ECR_APIGW_REPO     = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/api-gateway"
+        ECR_APIGW_REPO     = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/notification-service"
     }
 
     stages {
@@ -160,7 +172,7 @@ pipeline {
 
                     def localImage = "arka-order-mcsv:jenkins-${env.BUILD_NUMBER}"
 
-                    def ecrRepo       = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/order-service"
+                    def ecrRepo       = env.ECR_ORDER_REPO
                     def ecrTag        = "jenkins-${env.BUILD_NUMBER}"
                     def ecrImage      = "${ecrRepo}:${ecrTag}"
                     def ecrImageLatest = "${ecrRepo}:latest"
@@ -249,7 +261,7 @@ pipeline {
 
                     def localImage = "arka-user-mcsv:jenkins-${env.BUILD_NUMBER}"
 
-                    def ecrRepo        = "${env.AWS_ACCOUNT_ID}.dkr.ecr.${env.AWS_REGION}.amazonaws.com/user-service"
+                    def ecrRepo        = env.ECR_USER_REPO
                     def ecrTag         = "jenkins-${env.BUILD_NUMBER}"
                     def ecrImage       = "${ecrRepo}:${ecrTag}"
                     def ecrImageLatest = "${ecrRepo}:latest"
