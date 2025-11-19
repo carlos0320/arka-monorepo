@@ -10,7 +10,7 @@ spring:
 
   config:
     import:
-      - ${SECRET_APP_PROD_PATH}
+      - ${SECRET_APP_DEV_PATH}
       - ${SECRET_API_GATEWAY_DEV_PATH}
 
   cloud:

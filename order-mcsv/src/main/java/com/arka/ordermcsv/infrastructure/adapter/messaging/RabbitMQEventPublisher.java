@@ -28,6 +28,9 @@ public class RabbitMQEventPublisher implements EventPublisher {
   @Value("${rabbitmq.order.routing.shipped}")
   private String orderShippedRoutingKey;
 
+  @Value("${rabbitmq.order.routing.delivered}")
+  private String orderDeliveredRoutingKey;
+
   private final AmqpTemplate amqpTemplate;
 
   public RabbitMQEventPublisher(AmqpTemplate amqpTemplate) {
@@ -67,6 +70,15 @@ public class RabbitMQEventPublisher implements EventPublisher {
     amqpTemplate.convertAndSend(
             orderExchangeName,
             orderShippedRoutingKey,
+            notificationEvent
+    );
+  }
+
+  @Override
+  public void orderDeliveredNotificationEvent(NotificationEvent notificationEvent) {
+    amqpTemplate.convertAndSend(
+            orderExchangeName,
+            orderDeliveredRoutingKey,
             notificationEvent
     );
   }

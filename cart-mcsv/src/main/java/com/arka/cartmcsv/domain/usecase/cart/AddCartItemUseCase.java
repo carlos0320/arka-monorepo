@@ -1,5 +1,6 @@
 package com.arka.cartmcsv.domain.usecase.cart;
 
+import com.arka.cartmcsv.domain.exceptions.*;
 import com.arka.cartmcsv.domain.model.*;
 import com.arka.cartmcsv.domain.model.gateway.CartGateway;
 import com.arka.cartmcsv.domain.model.gateway.UserGateway;
@@ -8,6 +9,7 @@ import com.arka.cartmcsv.domain.usecase.inventory.ReserveStockUseCase;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.List;
 
 public class AddCartItemUseCase {
   private final CartGateway cartGateway;
@@ -23,11 +25,12 @@ public class AddCartItemUseCase {
   }
 
   public void execute(Long userId, Long productId, Integer quantity) {
+
     // validations
     validateInputs(userId,productId,quantity);
 
     // get cart to associate cart item and user
-    Cart cart = cartGateway.findCartByUserIdAndStatus(userId, CartStatus.PENDING)
+    Cart cart = cartGateway.findCartByUserIdAndStatuses( userId, List.of(CartStatus.PENDING, CartStatus.ABANDONED))
             .orElseGet(() -> {
               // get user details
               User user = userGateway.getUserDetails(userId);
@@ -43,8 +46,8 @@ public class AddCartItemUseCase {
               return  newCart;
             });
 
-    if (!cart.isPending()){
-      throw new RuntimeException("Cart status must be pending to add a new item");
+    if (!cart.isPending() && !cart.isAbandoned()){
+      throw new InvalidCartStatusTransitionException("Cart status must be pending or abandoned to add a new item");
     }
 
     // reserve stock
@@ -59,15 +62,15 @@ public class AddCartItemUseCase {
 
   private void validateInputs(Long userId, Long productId, Integer quantity){
     if (userId == null || userId <= 0 ){
-      throw new IllegalArgumentException("Invalid user id");
+      throw new InvalidUserIdException();
     }
 
     if (productId == null || productId <= 0){
-      throw new IllegalArgumentException("Invalid product id");
+      throw new InvalidProductIdException();
     }
 
     if (quantity == null || quantity <= 0){
-      throw  new IllegalArgumentException("Invalid quantity");
+      throw  new InvalidQuantityException();
     }
   }
 }

@@ -15,7 +15,6 @@ public class BearerTokenServerAuthenticationConverter implements ServerAuthentic
   public Mono<Authentication> convert(ServerWebExchange exchange) {
 
     String path = exchange.getRequest().getPath().value();
-
     //skip public endpoints
     if (path.startsWith("/api/auth/")
             || path.startsWith("/swagger-ui")

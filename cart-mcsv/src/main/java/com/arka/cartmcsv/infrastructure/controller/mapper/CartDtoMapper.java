@@ -36,9 +36,8 @@ public class CartDtoMapper {
     if (cart.getItems() != null){
       List<CartItemDto> cartItemsDto = cart.getItems()
               .stream()
-              .map(CartItemDtoMapper::toDto)
+              .map(item -> CartItemDtoMapper.toDto(item, cart.getCartId()))
               .collect(Collectors.toList());
-
       cartDto.setItems(cartItemsDto);
     }
 

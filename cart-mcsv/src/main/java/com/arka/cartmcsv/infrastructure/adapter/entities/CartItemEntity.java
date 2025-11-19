@@ -2,6 +2,7 @@ package com.arka.cartmcsv.infrastructure.adapter.entities;
 
 import com.arka.cartmcsv.domain.model.Cart;
 import com.arka.cartmcsv.domain.model.Product;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -38,6 +39,7 @@ public class CartItemEntity {
 
   @ManyToOne
   @JoinColumn(name = "cart_id")
+  @JsonBackReference
   private CartEntity cart;
 
   private Long productId;

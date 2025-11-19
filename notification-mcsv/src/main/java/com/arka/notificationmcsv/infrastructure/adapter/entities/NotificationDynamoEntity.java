@@ -20,13 +20,11 @@ public class NotificationDynamoEntity {
   private String id;
   private String userEmail;
   private Long userId;
-  private String createdAt;   // stored as ISO-8601 string (ej. 2025-11-16T13:45:12Z)
+  private String createdAt;
   private String type;
   private String emailMessage;
   private String status;
   private String errorLogs;
-
-  // --- KEY MAPPINGS ---
 
   @DynamoDbPartitionKey // primary key de la tabla
   public String getId() {
@@ -37,8 +35,8 @@ public class NotificationDynamoEntity {
     this.id = id;
   }
 
-  // GSI: userId-createdAt-index  (Partition: userId, Sort: createdAt)
 
+  // usamos esto si necesitamos en el futuro filtrar por usuario y por fecha
   @DynamoDbSecondaryPartitionKey(indexNames = "userId-createdAt-index") // userId es el partitionkey
   public Long getUserId() {
     return userId;

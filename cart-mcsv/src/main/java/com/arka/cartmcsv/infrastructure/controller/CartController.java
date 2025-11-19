@@ -6,6 +6,7 @@ import com.arka.cartmcsv.infrastructure.controller.dto.CartDto;
 import com.arka.cartmcsv.infrastructure.controller.dto.CartRequestDto;
 import com.arka.cartmcsv.infrastructure.controller.dto.ResponseDto;
 import com.arka.cartmcsv.infrastructure.controller.mapper.CartDtoMapper;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -48,11 +49,11 @@ public class CartController {
   public ResponseEntity<ResponseDto> addCartItem(
           @RequestHeader("X-User-ID") String userId,
           @RequestHeader("X-User-roles") String roles,
-          @RequestBody CartRequestDto cartRequestDto
+          @Valid @RequestBody CartRequestDto cartRequestDto
   ){
 
     if (!roles.contains("CLIENT")){
-      throwForbiddenError();
+      return throwForbiddenError();
     }
 
     addCartItemUseCase.execute(Long.valueOf(userId), cartRequestDto.getProductId(),cartRequestDto.getQuantity());
@@ -71,7 +72,7 @@ public class CartController {
   ) {
 
     if (!roles.contains("CLIENT")){
-      throwForbiddenError();
+      return throwForbiddenError();
     }
 
     Cart userCart = getUserCartUseCase.execute(Long.valueOf(userId));
@@ -88,7 +89,7 @@ public class CartController {
           @RequestHeader("X-User-ID") String userId,
           @RequestHeader("X-User-roles") String roles,
           @PathVariable("cartItemId") String cartItemId,
-          @RequestBody CartRequestDto cartRequestDto
+          @Valid @RequestBody CartRequestDto cartRequestDto
   )
   {
 
@@ -113,7 +114,7 @@ public class CartController {
   ){
 
     if (!roles.contains("CLIENT")){
-      throwForbiddenError();
+      return throwForbiddenError();
     }
 
     removeCartItemUseCase.execute(Long.valueOf(userId),Long.valueOf(cartItemId));
@@ -131,7 +132,7 @@ public class CartController {
   ){
 
     if (!roles.contains("CLIENT")){
-      throwForbiddenError();
+      return throwForbiddenError();
     }
 
     confirmCartUseCase.execute(Long.valueOf(userId));
@@ -149,7 +150,7 @@ public class CartController {
   ){
 
     if (!roles.contains("CLIENT")){
-      throwForbiddenError();
+      return throwForbiddenError();
     }
 
     cancelCartUseCase.execute(Long.valueOf(userId));
@@ -165,7 +166,7 @@ public class CartController {
           @RequestHeader("X-User-roles") String roles
   ){
     if (!roles.contains("ADMIN")){
-      throwForbiddenError();
+      return throwForbiddenError();
     }
 
     List<CartDto> abandonedCarts = getAbandonedCartsUseCase.execute()
@@ -187,17 +188,5 @@ public class CartController {
     responseDto.setStatus(HttpStatus.FORBIDDEN);
     return ResponseEntity.status(HttpStatus.FORBIDDEN).body(responseDto);
   }
-
-//  @DeleteMapping("/{cartItemId}")
-//  public ResponseEntity<ResponseDto> removeCartItem(@RequestHeader("X-User-ID") String userId, @PathVariable("cartItemId") String cartItemId){
-//    removeCartItemUseCase.execute(Long.valueOf(cartItemId),Long.valueOf(userId));
-//    ResponseDto responseDto = new ResponseDto();
-//    Map<String, Object> data = new HashMap<>();
-//    data.put("message", "Item deleted successfully");
-//    responseDto.setData(data);
-//    return new ResponseEntity<>(responseDto, HttpStatus.OK);
-//  }
-
-
 
 }

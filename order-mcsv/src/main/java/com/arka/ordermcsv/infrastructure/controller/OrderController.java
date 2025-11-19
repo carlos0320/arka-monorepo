@@ -1,6 +1,7 @@
 package com.arka.ordermcsv.infrastructure.controller;
 
 import com.arka.ordermcsv.domain.usecases.ConfirmOrderUseCase;
+import com.arka.ordermcsv.domain.usecases.DeliverOrderUseCase;
 import com.arka.ordermcsv.domain.usecases.ShipOrderUseCase;
 import com.arka.ordermcsv.infrastructure.controller.dto.ResponseDto;
 import org.springframework.http.HttpStatus;
@@ -12,10 +13,12 @@ import org.springframework.web.bind.annotation.*;
 public class OrderController {
   private final ConfirmOrderUseCase orderConfirmedUseCase;
   private final ShipOrderUseCase orderShippedUseCase;
+  private final DeliverOrderUseCase orderDeliveredUseCase;
 
-  public OrderController(ConfirmOrderUseCase orderConfirmedUseCase, ShipOrderUseCase orderShippedUseCase) {
+  public OrderController(ConfirmOrderUseCase orderConfirmedUseCase, ShipOrderUseCase orderShippedUseCase, DeliverOrderUseCase orderDeliveredUseCase) {
     this.orderConfirmedUseCase = orderConfirmedUseCase;
     this.orderShippedUseCase = orderShippedUseCase;
+    this.orderDeliveredUseCase = orderDeliveredUseCase;
   }
 
   @PostMapping("/admin/confirm/{orderId}")
@@ -24,7 +27,7 @@ public class OrderController {
           @RequestHeader("X-User-Roles") String roles
   ) {
     if (!roles.contains("ADMIN")) {
-      throwForbiddenError(); // or return 403 response
+      return throwForbiddenError(); // or return 403 response
     }
 
     orderConfirmedUseCase.execute(orderId);
@@ -41,7 +44,7 @@ public class OrderController {
           @RequestHeader("X-User-Roles") String roles
   ) {
     if (!roles.contains("ADMIN")) {
-      throwForbiddenError(); // or return 403 response
+      return throwForbiddenError(); // or return 403 response
     }
 
     orderShippedUseCase.execute(orderId);
@@ -53,7 +56,25 @@ public class OrderController {
   }
 
 
-  private ResponseEntity<ResponseDto> throwForbiddenError(){
+  @PostMapping("/admin/deliver/{orderId}")
+  public ResponseEntity<ResponseDto<String>> deliverOrder(
+          @PathVariable Long orderId,
+          @RequestHeader("X-User-Roles") String roles
+  ) {
+    if (!roles.contains("ADMIN")) {
+      return throwForbiddenError(); // or return 403 response
+    }
+
+    orderDeliveredUseCase.execute(orderId);
+
+    ResponseDto<String> responseDto = new ResponseDto<>();
+    responseDto.setData("Order shipped successfully");
+    responseDto.setStatus(HttpStatus.OK);
+    return ResponseEntity.status(HttpStatus.OK).body(responseDto);
+  }
+
+
+  private ResponseEntity<ResponseDto<String>> throwForbiddenError(){
     ResponseDto<String> responseDto = new ResponseDto<>();
     responseDto.setData("Only users with  role admin are allowed to perform this action");
     responseDto.setStatus(HttpStatus.FORBIDDEN);

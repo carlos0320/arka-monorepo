@@ -1,5 +1,9 @@
 package com.arka.cartmcsv.domain.usecase.cart;
 
+import com.arka.cartmcsv.domain.exceptions.InvalidCartItemIdExceptions;
+import com.arka.cartmcsv.domain.exceptions.InvalidProductIdException;
+import com.arka.cartmcsv.domain.exceptions.InvalidQuantityException;
+import com.arka.cartmcsv.domain.exceptions.InvalidUserIdException;
 import com.arka.cartmcsv.domain.model.Cart;
 import com.arka.cartmcsv.domain.model.CartItem;
 import com.arka.cartmcsv.domain.model.CartStatus;
@@ -7,6 +11,8 @@ import com.arka.cartmcsv.domain.model.Product;
 import com.arka.cartmcsv.domain.model.gateway.CartGateway;
 import com.arka.cartmcsv.domain.usecase.inventory.ReleaseStockUseCase;
 import com.arka.cartmcsv.domain.usecase.inventory.ReserveStockUseCase;
+
+import java.util.List;
 
 public class UpdateCartItemUseCase {
   private final CartGateway cartGateway;
@@ -24,7 +30,7 @@ public class UpdateCartItemUseCase {
   public void execute(Long userId, Long productId, Long cartItemId, Integer quantity) {
     validateInputs(userId, productId, cartItemId, quantity);
 
-    Cart cart = cartGateway.findCartByUserIdAndStatus(userId, CartStatus.PENDING)
+    Cart cart = cartGateway.findCartByUserIdAndStatuses( userId, List.of(CartStatus.PENDING, CartStatus.ABANDONED))
             .orElseThrow(() -> new IllegalArgumentException("Cart not found"));
 
     CartItem cartItem = cart.findCartItemById(cartItemId);
@@ -44,13 +50,13 @@ public class UpdateCartItemUseCase {
 
   private void validateInputs(Long userId, Long productId, Long cartItemId, Integer quantity) {
     if (userId == null || userId <= 0)
-      throw new IllegalArgumentException("Invalid user id");
+      throw new InvalidUserIdException();
     if (cartItemId == null || cartItemId <= 0)
-      throw new IllegalArgumentException("Invalid cart item id");
+      throw new InvalidCartItemIdExceptions();
     if (productId == null || productId <= 0)
-      throw new IllegalArgumentException("Invalid product id");
+      throw new InvalidProductIdException();
     if (quantity == null || quantity <= 0)
-      throw new IllegalArgumentException("Invalid quantity");
+      throw new InvalidQuantityException();
   }
 }
 

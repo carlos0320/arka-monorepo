@@ -31,6 +31,28 @@ inventory:
 server:
   port: ${CART_SERVICE_PORT}
 
+## Si el servicio falla muchas veces (50% de fallos en 10 intentos),
+## el circuito se cierra por 5 segundos para evitar seguir llamándolo.
+## Después prueba con 3 llamadas. Si funcionan, vuelve a la normalidad.
+resilience4j:
+  circuitbreaker:
+    instances:
+      inventoryService:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 5s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+      userService:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 5s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+
+
 management:
   endpoints:
     web:

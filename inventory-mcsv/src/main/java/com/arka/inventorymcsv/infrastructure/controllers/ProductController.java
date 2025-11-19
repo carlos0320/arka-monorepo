@@ -62,7 +62,7 @@ public class ProductController {
           @Valid @RequestBody Mono<ProductDto> productDtoMono) {
 
     if (!roles.contains("ADMIN")){
-      forbiddenErrorMessage();
+      return forbiddenErrorMessage();
     }
 
     return productDtoMono
@@ -102,7 +102,7 @@ public class ProductController {
           @RequestBody Mono<ProductDto> productDtoMono) {
 
     if (!roles.contains("ADMIN")){
-      forbiddenErrorMessage();
+      return forbiddenErrorMessage();
     }
 
     return productDtoMono
@@ -137,7 +137,7 @@ public class ProductController {
   @GetMapping("/admin/low-stock-products")
   public Mono<ResponseEntity<ResponseDto>> getLowStockProducts(@RequestHeader("X-User-roles") String roles) {
     if (!roles.contains("ADMIN")){
-      forbiddenErrorMessage();
+      return forbiddenErrorMessage();
     }
     return listLowStockProducts.execute()
             .collectList()
@@ -172,7 +172,7 @@ public class ProductController {
           @RequestHeader("X-User-roles") String roles,
           @RequestBody Mono<StockOperationRequestDto> requestMono) {
     if (!roles.contains("ADMIN")){
-      forbiddenErrorMessage();
+      return forbiddenErrorMessage();
     }
     return getResponseEntityMono(requestMono, restockUseCase::execute);
   }

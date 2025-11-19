@@ -4,6 +4,9 @@ package com.arka.ordermcsv.domain.usecases;
 import com.arka.ordermcsv.domain.event.OrderEvent;
 import com.arka.ordermcsv.domain.event.OutboxEvent;
 import com.arka.ordermcsv.domain.event.gateway.OutboxEventGateway;
+import com.arka.ordermcsv.domain.exception.InvalidUserDataException;
+import com.arka.ordermcsv.domain.exception.OrderItemsNotFoundException;
+import com.arka.ordermcsv.domain.exception.UserIdInvalidException;
 import com.arka.ordermcsv.domain.model.Order;
 import com.arka.ordermcsv.domain.model.OrderItem;
 import com.arka.ordermcsv.domain.model.gateway.OrderGateway;
@@ -88,35 +91,35 @@ public class CreateOrderUseCase {
                               List<OrderItem> orderItems
   ){
     if (userId == null || userId <= 0){
-      throw new IllegalArgumentException("User id is required and must be valid.");
+      throw new UserIdInvalidException();
     }
 
     if (userName == null || userName.isEmpty()){
-      throw new IllegalArgumentException("User name is required and must be valid.");
+      throw new InvalidUserDataException("User name is required and must be valid.");
     }
 
     if (contactEmail == null || contactEmail.isEmpty()){
-      throw new IllegalArgumentException("User email is required and must be valid.");
+      throw new InvalidUserDataException("User email is required and must be valid.");
     }
 
     if (contactPhone == null || contactPhone.isEmpty()){
-      throw new IllegalArgumentException("User phone is required and must be valid.");
+      throw new InvalidUserDataException("User phone is required and must be valid.");
     }
 
     if (shippingAddress == null || shippingAddress.isEmpty()){
-      throw new IllegalArgumentException("User shipping address is required and must be valid.");
+      throw new InvalidUserDataException("User shipping address is required and must be valid.");
     }
 
     if (customerName == null || customerName.isEmpty()){
-      throw new IllegalArgumentException("Client name  is required and must be valid.");
+      throw new InvalidUserDataException("Client name  is required and must be valid.");
     }
 
     if (clientId == null || clientId <= 0){
-      throw new IllegalArgumentException("Client id  is required and must be valid.");
+      throw new InvalidUserDataException("Client id  is required and must be valid.");
     }
 
     if (orderItems.isEmpty()){
-      throw new IllegalArgumentException("Order items is required and must be valid.");
+      throw new OrderItemsNotFoundException();
     }
   }
 

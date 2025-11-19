@@ -8,4 +8,5 @@ public interface EventPublisher {
   void orderConfirmedInventoryEvent(InventoryEvent orderEvent);
   void orderConfirmedNotificationEvent(NotificationEvent notificationEvent);
   void orderShippedNotificationEvent(NotificationEvent notificationEvent);
+  void orderDeliveredNotificationEvent(NotificationEvent notificationEvent);
 }

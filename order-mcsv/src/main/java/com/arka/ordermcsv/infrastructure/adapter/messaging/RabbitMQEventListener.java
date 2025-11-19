@@ -23,8 +23,6 @@ public class RabbitMQEventListener implements EventCart {
   @Transactional
   @RabbitListener(queues = "${rabbitmq.cart.queues.confirmed}")
   public void onOrderCreated(OrderEventDto orderEvent) {
-    System.out.println("🟢 Received order event!!!!!!!!!!!!!!: {}" + orderEvent);
-
     try{
       List<OrderItem> orderItems = OrderEventMapper.toDomainOrderItems(orderEvent);
 

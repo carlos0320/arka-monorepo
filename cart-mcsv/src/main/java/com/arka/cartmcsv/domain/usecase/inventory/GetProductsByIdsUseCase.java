@@ -1,5 +1,6 @@
 package com.arka.cartmcsv.domain.usecase.inventory;
 
+import com.arka.cartmcsv.domain.exceptions.UnableToFetchProductsException;
 import com.arka.cartmcsv.domain.model.Product;
 import com.arka.cartmcsv.domain.model.gateway.InventoryGateway;
 
@@ -7,7 +8,6 @@ import java.util.List;
 
 public class GetProductsByIdsUseCase {
   private final InventoryGateway inventoryGateway;
-
   public GetProductsByIdsUseCase(InventoryGateway inventoryGateway) {
     this.inventoryGateway = inventoryGateway;
   }
@@ -16,7 +16,7 @@ public class GetProductsByIdsUseCase {
     try{
       return inventoryGateway.getProductsByIds(productIds);
     } catch (Exception e) {
-      throw new RuntimeException("Unable to fetch products ", e);
+      throw new UnableToFetchProductsException("Unable to fetch products from inventory service");
     }
   }
 

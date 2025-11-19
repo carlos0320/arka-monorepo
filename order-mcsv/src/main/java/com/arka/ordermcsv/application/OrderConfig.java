@@ -4,6 +4,7 @@ import com.arka.ordermcsv.domain.event.gateway.OutboxEventGateway;
 import com.arka.ordermcsv.domain.model.gateway.OrderGateway;
 import com.arka.ordermcsv.domain.usecases.CreateOrderUseCase;
 import com.arka.ordermcsv.domain.usecases.ConfirmOrderUseCase;
+import com.arka.ordermcsv.domain.usecases.DeliverOrderUseCase;
 import com.arka.ordermcsv.domain.usecases.ShipOrderUseCase;
 import com.arka.ordermcsv.infrastructure.adapter.messaging.RabbitMQEventListener;
 import com.arka.ordermcsv.infrastructure.adapter.repositories.OrderEntityRepository;
@@ -43,6 +44,11 @@ public class OrderConfig {
   @Bean
   public ShipOrderUseCase shipOrderUseCase(OrderGateway orderGateway, OutboxEventGateway outboxEventGateway, ObjectMapper objectMapper) {
     return new ShipOrderUseCase(orderGateway,outboxEventGateway,objectMapper);
+  }
+
+  @Bean
+  public DeliverOrderUseCase deliverOrderUseCase(OrderGateway orderGateway, OutboxEventGateway outboxEventGateway, ObjectMapper objectMapper){
+    return new DeliverOrderUseCase(orderGateway,outboxEventGateway,objectMapper);
   }
 
   @Bean

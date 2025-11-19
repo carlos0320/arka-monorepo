@@ -14,10 +14,9 @@ public class ProductDto {
   private String description;
   private String imageUrl;
   private Integer stock;
-  private Integer availableStock;
   private BigDecimal price;
   private Integer minStock;
-
+  private Integer availableStock;
   private BrandDto brand;
   private CategoryDto category;
 

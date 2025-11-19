@@ -5,6 +5,7 @@ import com.arka.ordermcsv.domain.event.NotificationEvent;
 import com.arka.ordermcsv.domain.event.OrderEvent;
 import com.arka.ordermcsv.domain.event.OutboxEvent;
 import com.arka.ordermcsv.domain.event.gateway.OutboxEventGateway;
+import com.arka.ordermcsv.domain.exception.NoConfirmedOrderFound;
 import com.arka.ordermcsv.domain.model.Order;
 import com.arka.ordermcsv.domain.model.OrderStatus;
 import com.arka.ordermcsv.domain.model.gateway.OrderGateway;
@@ -26,7 +27,7 @@ public class ShipOrderUseCase {
   public void execute(Long orderId){
     try{
       Order confirmedOrder = orderGateway.getOrderByOrderIdAndStatus(orderId, OrderStatus.CONFIRMED.getValue())
-              .orElseThrow(() -> new IllegalArgumentException("No confirmed order found"));
+              .orElseThrow(() -> new NoConfirmedOrderFound());
 
       confirmedOrder.setShippedAt(LocalDateTime.now());
       confirmedOrder.setStatus(OrderStatus.SHIPPED);

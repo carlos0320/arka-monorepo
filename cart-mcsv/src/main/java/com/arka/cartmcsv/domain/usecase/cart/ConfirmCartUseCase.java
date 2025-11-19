@@ -3,11 +3,15 @@ package com.arka.cartmcsv.domain.usecase.cart;
 
 import com.arka.cartmcsv.domain.event.CartConfirmEvent;
 import com.arka.cartmcsv.domain.event.OutboxEvent;
+import com.arka.cartmcsv.domain.exceptions.CartNotFoundException;
+import com.arka.cartmcsv.domain.exceptions.InvalidUserIdException;
 import com.arka.cartmcsv.domain.model.Cart;
 import com.arka.cartmcsv.domain.model.CartStatus;
 import com.arka.cartmcsv.domain.model.gateway.CartGateway;
 import com.arka.cartmcsv.domain.event.gateway.OutboxEventGateway;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.util.List;
 
 public class ConfirmCartUseCase {
   private final CartGateway cartGateway;
@@ -24,11 +28,11 @@ public class ConfirmCartUseCase {
   public void execute(Long userId) {
     try{
       if (userId == null || userId <= 0){
-        throw new IllegalArgumentException("User id is required and must be valid");
+        throw new InvalidUserIdException();
       }
 
-      Cart cart = cartGateway.findCartByUserIdAndStatus(userId, CartStatus.PENDING)
-              .orElseThrow(() -> new IllegalArgumentException("Cart not found"));
+      Cart cart = cartGateway.findCartByUserIdAndStatuses( userId, List.of(CartStatus.PENDING, CartStatus.ABANDONED))
+              .orElseThrow(() -> new CartNotFoundException());
 
       cart.confirm();
       cartGateway.save(cart);

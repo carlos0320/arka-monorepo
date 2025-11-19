@@ -21,9 +21,13 @@ public class ProductMapper {
     entity.setMinStock(product.getMinStock());
     entity.setReservedStock(product.getReservedStock());
     entity.setStock(product.getStock());
-    entity.setAvailableStock(product.getAvailableStock());
+    if (product.getAvailableStock() == null){
+      Integer availableStock = product.getStock() - product.getReservedStock();
+      entity.setAvailableStock(availableStock);
+    }else{
+      entity.setAvailableStock(product.getAvailableStock());
+    }
 
-    // ✅ Safe null checks — only set IDs if nested objects exist
     if (product.getBrand() != null && product.getBrand().getBrandId() != null) {
       entity.setBrandId(product.getBrand().getBrandId());
     }

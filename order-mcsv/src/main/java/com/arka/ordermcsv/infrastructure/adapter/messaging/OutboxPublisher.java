@@ -55,6 +55,11 @@ public class OutboxPublisher {
             NotificationEvent orderShipped = objectMapper.readValue(event.getPayload(), NotificationEvent.class);
             eventPublisher.orderShippedNotificationEvent(orderShipped);
             break;
+
+          case "OrderDeliveredNotificationEvent":
+            NotificationEvent orderDelivered = objectMapper.readValue(event.getPayload(), NotificationEvent.class);
+            eventPublisher.orderDeliveredNotificationEvent(orderDelivered);
+            break;
         }
         outboxEntityRepository.markAsPublished(event.getId());
 

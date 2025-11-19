@@ -19,7 +19,10 @@ public class ProductDtoMapper {
 
     productDto.setImageUrl(product.getImageUrl());
     productDto.setStock(product.getStock());
-    productDto.setAvailableStock(product.getAvailableStock());
+    if (product.getAvailableStock() != null){
+      productDto.setAvailableStock(product.getAvailableStock());
+    }
+
     productDto.setMinStock(product.getMinStock());
 
     if (brand != null) {

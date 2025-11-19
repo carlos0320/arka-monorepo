@@ -6,6 +6,7 @@ import com.arka.inventorymcsv.domain.exceptions.ValidationException;
 import com.arka.inventorymcsv.infrastructure.controllers.dto.ResponseDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
@@ -53,6 +54,13 @@ public class GlobalExceptionHandler {
   public Mono<ResponseEntity<ResponseDto>> handleException(Exception ex) {
     ex.printStackTrace();
     return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error: " + ex.getMessage());
+  }
+
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ResponseEntity<Map<String,String>> handleJsonParseError(HttpMessageNotReadableException ex){
+    Map<String,String> error = new HashMap<>();
+    error.put("error", "Invalid JSON input: " + ex.getMostSpecificCause().getMessage());
+    return ResponseEntity.badRequest().body(error);
   }
 
   private Mono<ResponseEntity<ResponseDto>> buildResponse(HttpStatus status, String message) {

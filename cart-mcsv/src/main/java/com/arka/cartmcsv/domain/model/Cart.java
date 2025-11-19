@@ -1,7 +1,9 @@
 package com.arka.cartmcsv.domain.model;
 
+import com.arka.cartmcsv.domain.exceptions.*;
 import jakarta.persistence.Id;
 import lombok.Data;
+import lombok.ToString;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -23,11 +25,12 @@ public class Cart {
 
   private BigDecimal totalCost;
 
+  @ToString.Exclude
   private List<CartItem> items = new ArrayList<>();
 
   public void addNewItem(Product product, Integer quantity) {
-    if (!isPending()) {
-      throw new RuntimeException("Cart must be pending to add a new item");
+    if (!status.equalsIgnoreCase(CartStatus.PENDING.getValue()) && !status.equalsIgnoreCase(CartStatus.ABANDONED.getValue())) {
+      throw new CartNotFoundException();
     }
 
     Optional<CartItem> existingItem = items.stream()
@@ -35,7 +38,7 @@ public class Cart {
             .findFirst();
 
     if (existingItem.isPresent()){
-      throw new RuntimeException("Cart item already exists");
+      throw new CartItemAlreadyExistsException();
     }
 
     CartItem cartItem = CartItem.create(product, quantity);
@@ -71,13 +74,14 @@ public class Cart {
   public boolean isPending() {
     return CartStatus.PENDING.getValue().equals(this.status);
   }
+  public boolean isAbandoned() { return CartStatus.ABANDONED.getValue().equals(this.status); }
 
   public CartItem findCartItemByProductId(Long productId){
     return items
             .stream()
             .filter(item -> item.getProductId().equals(productId))
             .findFirst()
-            .orElseThrow(() -> new RuntimeException("item with that product not found"));
+            .orElseThrow(() -> new ProductNotInCartException(productId));
   }
 
   public CartItem findCartItemById(Long cartItemId){
@@ -85,7 +89,7 @@ public class Cart {
             .stream()
             .filter(item -> item.getCartItemId().equals(cartItemId))
             .findFirst()
-            .orElseThrow(() -> new RuntimeException("item with that id not found"));
+            .orElseThrow(() -> new CartItemNotFoundException(cartItemId));
   }
 
 
@@ -96,16 +100,16 @@ public class Cart {
   }
 
   public void cancel(){
-    if (!status.equalsIgnoreCase(CartStatus.PENDING.getValue())) {
-      throw new RuntimeException("Cant cancel a cart that is already confirmed or cancelled");
+    if (!status.equalsIgnoreCase(CartStatus.PENDING.getValue()) && !status.equalsIgnoreCase(CartStatus.ABANDONED.getValue())) {
+      throw new InvalidCartStatusTransitionException("Cant cancel a cart that is already confirmed or cancelled");
     }
     status = CartStatus.CANCELLED.getValue().toLowerCase();
     updatedAt = LocalDateTime.now();
   }
 
   public void confirm(){
-    if (!status.equalsIgnoreCase(CartStatus.PENDING.getValue())) {
-      throw new RuntimeException("Cant confirm a cart that is already confirmed or cancelled");
+    if (!status.equalsIgnoreCase(CartStatus.PENDING.getValue()) && !status.equalsIgnoreCase(CartStatus.ABANDONED.getValue())) {
+      throw new InvalidCartStatusTransitionException("Cant cancel a cart that is already confirmed or cancelled");
     }
     status = CartStatus.CONFIRMED.getValue().toLowerCase();
     updatedAt = LocalDateTime.now();

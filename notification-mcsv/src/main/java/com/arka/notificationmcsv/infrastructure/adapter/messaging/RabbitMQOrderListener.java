@@ -14,7 +14,6 @@ public class RabbitMQOrderListener {
 
   @RabbitListener(queues = "${rabbitmq.order.queues.created}")
   public void onOrderCreated(OrderEventDto orderEventDto) {
-    System.out.println("orderEventDto!!!!! = " + orderEventDto);
     orderEvent.onOrderCreated(orderEventDto);
   }
 

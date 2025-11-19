@@ -33,9 +33,25 @@ public class CartGatewayImpl implements CartGateway {
 
 
   @Override
-  public Optional<Cart> findCartByUserIdAndStatus(Long userId, CartStatus status) {
-    return cartEntityRepository.findByUserIdAndStatus(userId, status.getValue())
-            .map(CartEntityMapper::toDomain);
+  public Optional<Cart> findCartByUserIdAndStatuses(Long userId, List<CartStatus> statuses) {
+    List<String> statusValues = statuses.stream()
+            .map(CartStatus::getValue)
+            .toList();
+
+    System.out.println("Status values: " + statusValues);
+
+    Optional<Cart> cartopt = cartEntityRepository.findByUserIdAndStatusIn(userId, statusValues)
+            .map(cartEntity -> {
+              System.out.println("Cart found: " + cartEntity.getCartId()); // print safe field
+              return CartEntityMapper.toDomain(cartEntity);
+            });
+
+    System.out.println("sssdsdsssdsd" + cartopt);
+    return cartEntityRepository.findByUserIdAndStatusIn(userId, statusValues)
+            .map(cartEntity -> {
+              System.out.println("Cart found: " + cartEntity.getCartId()); // print safe field
+              return CartEntityMapper.toDomain(cartEntity);
+            });
   }
 
   @Override

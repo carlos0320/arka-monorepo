@@ -2,6 +2,7 @@ package com.arka.cartmcsv.infrastructure.adapter.entities;
 
 import com.arka.cartmcsv.domain.model.CartItem;
 import com.arka.cartmcsv.domain.model.CartStatus;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -45,6 +46,7 @@ public class CartEntity {
   private BigDecimal totalCost;
 
   @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
+  @JsonManagedReference
   private List<CartItemEntity> items = new ArrayList<>();
 
 }

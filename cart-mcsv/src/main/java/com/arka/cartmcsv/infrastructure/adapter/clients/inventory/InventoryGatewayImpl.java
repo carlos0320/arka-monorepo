@@ -1,12 +1,21 @@
 package com.arka.cartmcsv.infrastructure.adapter.clients.inventory;
 
+import com.arka.cartmcsv.domain.exceptions.InventoryServiceException;
+import com.arka.cartmcsv.domain.exceptions.InventoryServiceUnavailableException;
 import com.arka.cartmcsv.domain.model.Product;
 import com.arka.cartmcsv.domain.model.gateway.InventoryGateway;
 import com.arka.cartmcsv.infrastructure.adapter.clients.inventory.dto.BatchProductRequest;
 import com.arka.cartmcsv.infrastructure.adapter.clients.inventory.dto.InventoryRequestDto;
 import com.arka.cartmcsv.infrastructure.adapter.clients.inventory.dto.InventoryResponseDto;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,6 +29,12 @@ public class InventoryGatewayImpl implements InventoryGateway {
   }
 
   @Override
+  @Retryable(
+          retryFor = { ResourceAccessException.class, HttpServerErrorException.class },
+          maxAttempts = 3,
+          backoff = @Backoff(delay = 500, multiplier = 2)
+  )
+  @CircuitBreaker(name = "inventoryService", fallbackMethod = "fallbackReserveStock")
   public Product reserveStock(Long productId, Integer quantity) {
     try{
       InventoryRequestDto inventoryRequestDto = new InventoryRequestDto();
@@ -32,48 +47,79 @@ public class InventoryGatewayImpl implements InventoryGateway {
       validateResponse(inventoryResponseDto);
       return getProduct(inventoryResponseDto);
 
-    }catch (Exception ex){
-      throw new RuntimeException("Failed to communicate with Inventory Service", ex);
+    }catch (HttpClientErrorException.BadRequest e) {
+      throw new InventoryServiceException("Bad request to Inventory Service: " + e.getMessage());
     }
   }
 
-  @Override
-  public Product releaseStock(Long productId, Integer quantity) {
-    InventoryRequestDto inventoryRequestDto = new InventoryRequestDto();
-
-    inventoryRequestDto.setProductId(productId);
-    inventoryRequestDto.setQuantity(quantity);
-
-    InventoryResponseDto inventoryResponseDto = inventoryHttpClient.releaseStock(inventoryRequestDto);
-
-    validateResponse(inventoryResponseDto);
-
-    return getProduct(inventoryResponseDto);
+  public Product fallbackReserveStock(Long productId, Integer quantity, Throwable t) {
+    throw new InventoryServiceUnavailableException("Inventory Service unavailable. Circuit breaker triggered.");
   }
 
   @Override
+  @Retryable(
+          retryFor = { ResourceAccessException.class, HttpServerErrorException.class },
+          maxAttempts = 3,
+          backoff = @Backoff(delay = 500, multiplier = 2)
+  )
+  @CircuitBreaker(name = "inventoryService", fallbackMethod = "fallbackReleaseStock")
+  public Product releaseStock(Long productId, Integer quantity) {
+    try{
+      InventoryRequestDto inventoryRequestDto = new InventoryRequestDto();
+
+      inventoryRequestDto.setProductId(productId);
+      inventoryRequestDto.setQuantity(quantity);
+
+      InventoryResponseDto inventoryResponseDto = inventoryHttpClient.releaseStock(inventoryRequestDto);
+
+      validateResponse(inventoryResponseDto);
+
+      return getProduct(inventoryResponseDto);
+    }catch (HttpClientErrorException.BadRequest e) {
+      throw new InventoryServiceException("Bad request to Inventory Service: " + e.getMessage());
+    }
+  }
+  public Product fallbackReleaseStock(Long productId, Integer quantity, Throwable t) {
+    throw new InventoryServiceUnavailableException("Inventory Service unavailable. Circuit breaker triggered.");
+  }
+
+  @Override
+  @Retryable(
+          retryFor = { ResourceAccessException.class, HttpServerErrorException.class },
+          maxAttempts = 3,
+          backoff = @Backoff(delay = 500, multiplier = 2)
+  )
+  @CircuitBreaker(name = "inventoryService", fallbackMethod = "fallbackGetProducts")
   public List<Product> getProductsByIds(List<Long> productIds) {
+    try{
+      BatchProductRequest batchProductRequest = new BatchProductRequest();
+      batchProductRequest.setProductIds(productIds);
 
-    BatchProductRequest batchProductRequest = new BatchProductRequest();
-    batchProductRequest.setProductIds(productIds);
+      InventoryResponseDto inventoryResponseDto = inventoryHttpClient.batchProducts(batchProductRequest);
+      return inventoryResponseDto.getData().getProducts()
+              .stream()
+              .map(productDto -> {
+                return new Product(
+                        productDto.getProductId(),
+                        productDto.getName(),
+                        productDto.getBrand().getName(),
+                        productDto.getCategory().getName(),
+                        productDto.getDescription(),
+                        productDto.getCategory().getName(),
+                        productDto.getAvailableStock(),
+                        productDto.getMinStock(),
+                        productDto.getPrice()
+                );
+              })
+              .collect(Collectors.toList());
 
-    InventoryResponseDto inventoryResponseDto = inventoryHttpClient.batchProducts(batchProductRequest);
-    return inventoryResponseDto.getData().getProducts()
-            .stream()
-            .map(productDto -> {
-              return new Product(
-                      productDto.getProductId(),
-                      productDto.getName(),
-                      productDto.getBrand().getName(),
-                      productDto.getCategory().getName(),
-                      productDto.getDescription(),
-                      productDto.getCategory().getName(),
-                      productDto.getAvailableStock(),
-                      productDto.getMinStock(),
-                      productDto.getPrice()
-              );
-            })
-            .collect(Collectors.toList());
+    }catch (HttpClientErrorException.BadRequest e) {
+      throw new InventoryServiceException("Bad request to Inventory Service: " + e.getMessage());
+    }
+  }
+
+  public List<Product> fallbackGetProducts(List<Long> productIds, Throwable t) {
+    throw new InventoryServiceUnavailableException("Inventory Service unavailable when fetching products.");
   }
 
   private void validateResponse(InventoryResponseDto inventoryResponseDto){
@@ -82,7 +128,6 @@ public class InventoryGatewayImpl implements InventoryGateway {
     }
 
     InventoryResponseDto.ProductDto productDto = inventoryResponseDto.getData().getProduct();
-
     if (productDto == null) {
       throw new IllegalArgumentException("Product not found in response");
     }

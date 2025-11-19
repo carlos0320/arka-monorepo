@@ -5,6 +5,8 @@ import com.arka.ordermcsv.domain.event.NotificationEvent;
 import com.arka.ordermcsv.domain.event.OrderEvent;
 import com.arka.ordermcsv.domain.event.OutboxEvent;
 import com.arka.ordermcsv.domain.event.gateway.OutboxEventGateway;
+import com.arka.ordermcsv.domain.exception.NoPendingOrderFoundException;
+import com.arka.ordermcsv.domain.exception.UserIdInvalidException;
 import com.arka.ordermcsv.domain.model.Order;
 import com.arka.ordermcsv.domain.model.OrderStatus;
 import com.arka.ordermcsv.domain.model.gateway.OrderGateway;
@@ -25,12 +27,12 @@ public class ConfirmOrderUseCase {
 
   public void execute(Long orderId){
     if (orderId == null || orderId <= 0){
-      throw new IllegalArgumentException("User id is required and must be valid.");
+      throw new UserIdInvalidException();
     }
 
     try {
       Order pendingOrder = orderGateway.getOrderByOrderIdAndStatus(orderId, OrderStatus.PENDING.getValue())
-              .orElseThrow(() -> new IllegalArgumentException("No pending order found"));
+              .orElseThrow(() -> new NoPendingOrderFoundException());
 
       pendingOrder.setConfirmedAt(LocalDateTime.now());
       pendingOrder.setStatus(OrderStatus.CONFIRMED);

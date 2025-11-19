@@ -14,7 +14,8 @@ import java.util.Optional;
 
 public interface CartEntityRepository extends JpaRepository<CartEntity,Long> {
   Optional<CartEntity> findByCartId(Long cartId);
-  Optional<CartEntity> findByUserIdAndStatus(Long userId, String status);
+  Optional<CartEntity> findByUserIdAndStatusIn(Long userId, List<String> statuses);
+  Optional<CartEntity> findByUserIdAndStatus(Long userId, String statuses);
 
   @Query("SELECT c FROM CartEntity c WHERE c.status = 'abandoned'")
   List<CartEntity> findAbandonedCarts();
